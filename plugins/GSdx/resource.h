@@ -39,6 +39,7 @@
 #define IDC_ACCURATE_BLEND_UNIT         2043
 #define IDC_ACCURATE_BLEND_UNIT_D3D11   2044
 #define IDC_ACCURATE_BLEND_UNIT_TEXT    2045
+#define IDC_DITHERING                   2046
 // Software Renderer Settings:
 #define IDC_MIPMAP_SW                   2060
 #define IDC_AA1                         2061
