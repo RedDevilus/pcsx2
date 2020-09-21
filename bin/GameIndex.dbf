@@ -5563,6 +5563,17 @@ Serial = SCUS-97396
 Name   = World Tour Soccer 2005 [Demo]
 Region = NTSC-U
 ---------------------------------------------
+Serial = SCUS-97397
+Name   = Syphon Filter - The Omega Strain
+Region = NTSC-U
+EETimingHack = 1 // Fixes random hangs.
+[patches = C909A32E]
+    author=Refraction
+    // NV and Flashlight fix.
+    patch=0,EE,00367798,word,48438000
+    patch=0,EE,0036779C,word,4B06521B
+[/patches]
+---------------------------------------------
 Serial = SCUS-97398
 Name   = Siren [Demo]
 Region = NTSC-U
