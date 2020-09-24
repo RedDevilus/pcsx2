@@ -222,6 +222,55 @@ set(pcsx2CDVDHeaders
 	CDVD/zlib_indexed.h
 	)
 
+# SPU2 sources
+set(pcsx2SPU2Sources
+    SPU2/ADSR.cpp
+    SPU2/Debug.cpp
+    SPU2/DplIIdecoder.cpp
+    SPU2/Dma.cpp
+    SPU2/Lowpass.cpp
+    SPU2/Mixer.cpp
+    SPU2/spu2.cpp
+    SPU2/ReadInput.cpp
+    SPU2/RegLog.cpp
+    SPU2/RegTable.cpp
+    SPU2/Reverb.cpp
+    SPU2/SndOut.cpp
+    SPU2/SndOut_SDL.cpp
+    SPU2/spu2freeze.cpp
+    SPU2/spu2replay.cpp
+    SPU2/spu2sys.cpp
+    SPU2/Timestretcher.cpp
+    SPU2/Wavedump_wav.cpp
+    SPU2/WavFile.cpp
+    SPU2/Linux/Alsa.cpp
+    SPU2/Linux/CfgHelpers.cpp
+    SPU2/Linux/Config.cpp
+    SPU2/Linux/ConfigDebug.cpp
+    SPU2/Linux/ConfigSoundTouch.cpp
+    SPU2/Linux/Dialogs.cpp
+    )
+
+# SPU2 headers
+set(pcsx2SPU2Headers
+    SPU2/Config.h
+    SPU2/Debug.h
+    SPU2/defs.h
+    SPU2/Dma.h
+    SPU2/Global.h
+    SPU2/Lowpass.h
+    SPU2/Mixer.h
+    SPU2/spu2.h
+    SPU2/regs.h
+    SPU2/SndOut.h
+    SPU2/spdif.h
+    SPU2/spu2replay.h
+    SPU2/WavFile.h
+    SPU2/Linux/Alsa.h
+    SPU2/Linux/Config.h
+    SPU2/Linux/Dialogs.h
+)
+
 # DebugTools sources
 set(pcsx2DebugToolsSources
 	DebugTools/DebugInterface.cpp
@@ -621,6 +670,8 @@ set(Common
 	${pcsx2Headers}
 	${pcsx2CDVDSources}
 	${pcsx2CDVDHeaders}
+    ${pcsx2SPU2Sources}
+    ${pcsx2SPU2Headers}
 	${pcsx2DebugToolsSources}
 	${pcsx2GuiSources}
 	${pcsx2GuiResources}
@@ -694,9 +745,6 @@ if(BUILTIN_GS)
 endif()
 if(BUILTIN_PAD)
     set(pcsx2FinalLibs "${pcsx2FinalLibs} onepad-1.2.0")
-endif()
-if(BUILTIN_SPU2)
-    set(pcsx2FinalLibs "${pcsx2FinalLibs} spu2x-2.0.0")
 endif()
 if(BUILTIN_USB)
     set(pcsx2FinalLibs "${pcsx2FinalLibs} USBnull-0.7.0")
