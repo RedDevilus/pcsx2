@@ -19,6 +19,7 @@
 #include "CDVD/CDVD.h"
 #include "GS.h"
 #include "GSFrame.h"
+#include "SPU2/spu2.h"
 
 #include "ConsoleLogger.h"
 #include "MainFrame.h"
@@ -855,8 +856,7 @@ void MainEmuFrame::VideoCaptureUpdate()
 			std::wstring* filename = nullptr;
 			if (filename = GSsetupRecording(m_capturingVideo))
 			{
-				if (SPU2setupRecording)
-					SPU2setupRecording(m_capturingVideo, filename);
+				SPU2setupRecording(m_capturingVideo, filename);
 				delete filename;
 			}
 			else
@@ -868,10 +868,7 @@ void MainEmuFrame::VideoCaptureUpdate()
 		else
 		{
 			// the GS doesn't support recording.
-			if (SPU2setupRecording)
-			{
-				SPU2setupRecording(m_capturingVideo, nullptr);
-			}
+			SPU2setupRecording(m_capturingVideo, nullptr);
 		}
 
 		if (GetMainFramePtr() && needsMainFrameEnable)
@@ -883,8 +880,7 @@ void MainEmuFrame::VideoCaptureUpdate()
 		// stop recording
 		if (GSsetupRecording)
 			GSsetupRecording(m_capturingVideo);
-		if (SPU2setupRecording)
-			SPU2setupRecording(m_capturingVideo, nullptr);
+		SPU2setupRecording(m_capturingVideo, nullptr);
 	}
 
 	if (m_capturingVideo)
