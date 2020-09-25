@@ -27,7 +27,6 @@
 #include "IPC.h"
 #include "FW.h"
 #include "SPU2/spu2.h"
-#include "R3000A.h"
 
 #include "../DebugTools/MIPSAnalyst.h"
 #include "../DebugTools/SymbolMap.h"
@@ -303,8 +302,6 @@ void SysCoreThread::OnResumeInThread( bool isSuspended )
 		DoCDVDopen();
 	FWopen();
     SPU2open((void*)pDsp);
-    SPU2setDMABaseAddr((uptr)iopMem->Main);
-	SPU2setClockPtr(&psxRegs.cycle);
 }
 
 
