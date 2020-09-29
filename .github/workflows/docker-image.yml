@@ -3,7 +3,8 @@ name: docker
 on:
   push:
     branches: master
-
+  pull_request:
+  
 jobs:
   multi:
     runs-on: ubuntu-latest
