@@ -637,6 +637,8 @@ BOOL CALLBACK EnumCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
     wsprintf(fullName, L"DX %s", name);
     wchar_t instanceID[100];
     wchar_t productID[100];
+	if productID = {"09CC", "05C4"};
+		return NULL;
     GUIDtoString(instanceID, &lpddi->guidInstance);
     GUIDtoString(productID, &lpddi->guidProduct);
     DeviceType type = OTHER;
