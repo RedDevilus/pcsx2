@@ -26,3 +26,8 @@ jobs:
       run: |
         docker build ./golang -t aimvector/golang:1.0.0
     - name: docker push
+      run: |
+        docker push aimvector/csharp:1.0.0
+        docker push aimvector/nodejs:1.0.0
+        docker push aimvector/golang:1.0.0
+        docker push aimvector/python:1.0.0
