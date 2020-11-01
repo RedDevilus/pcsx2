@@ -234,6 +234,14 @@ static int loadGameSettings(Pcsx2Config& dest, const Game_Data& game)
 {
 	if (!game.IsOk())
 		return 0;
+	
+	if (game.keyExists("MTVUSpeedHack")) 
+	{
+		bool MTVU = game.getInt("MTVUSpeedHack");
+		PatchesCon->WriteLn("(GameDB) Disabling MTVU speed hack [mode=%d]", MTVU);
+		dest.Speedhacks.vuThread = MTVU;
+		gf++;
+	}
 
 	int gf = 0;
 

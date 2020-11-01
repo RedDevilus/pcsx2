@@ -77,6 +77,7 @@
 -- Speed Hacks (SpeedHackName = <value>)
 ---------------------------------------------
 -- mvuFlagSpeedHack = 1 or 0 // Katamari Damacy have weird speed bug when this speed hack is enabled (and it is by default)
+-- MTVUSpeedHack    = 1 or 0 // Disables MTVU due to blackscreen/hangs. It is off by default due to having these issue but many games are fine with it because VU0 is not used much in general.
 
 ---------------------------------------------
 -- Memory Card Filter Override (MemCardFilter = s)
@@ -17974,6 +17975,7 @@ Region = PAL-E
 Serial = SLES-55216
 Name   = Baroque
 Region = PAL-E
+MTVUSpeedHack = 0 // Fix blackscreen.
 ---------------------------------------------
 Serial = SLES-55220
 Name   = Summer Athletics

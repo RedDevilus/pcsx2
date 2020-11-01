@@ -57,6 +57,7 @@ enum GamefixId
 	Fix_ScarfaceIbit,
 	Fix_CrashTagTeamIbit,
 	Fix_VU0Kickstart,
+	Fix_MTVUSpeedHack,
 
 	GamefixId_COUNT
 };
