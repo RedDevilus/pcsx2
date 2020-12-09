@@ -228,12 +228,6 @@ CRC::Game CRC::m_games[] =
 	{0xAA5EC3A3, TalesOfAbyss, JP, 0},
 	{0xFB236A46, SonicUnleashed, US, 0},
 	{0x8C913264, SonicUnleashed, EU, 0},
-	{0xD71B57F4, Genji, US, 0},
-	{0xFADEBC45, Genji, EU, 0},
-	{0xB4776FC1, Genji, JP, 0},
-	{0x56242EC9, Genji, KO, 0},
-	{0xCDAF243D, Genji, CH, 0},
-	{0x2A5E0B61, Genji, CH, 0},
 	{0xE04EA200, StarOcean3, EU, 0},
 	{0x23A97857, StarOcean3, US, 0},
 	{0xBEC32D49, StarOcean3, JP, 0},
@@ -299,8 +293,6 @@ CRC::Game CRC::m_games[] =
 	{0xE169BAF8, RedDeadRevolver, US, 0},
 	{0xE2E67E23, RedDeadRevolver, EU, 0},
 	{0x87844524, RedDeadRevolver, RU, 0}, // Unofficial RU-version
-	{0x6DF62AEA, BleachBladeBattlers, JP, 0},
-	{0x6EB71AB0, BleachBladeBattlers, JP, 0}, // 2nd
 	{0xCBB87BF9, EvangelionJo, JP, 0}, // cutie comment
 	{0xC5B75C7C, Oneechanbara2Special, JP, 0}, // cutie comment
 	{0xC725CC6C, Oneechanbara2Special, JP, 0},
@@ -324,11 +316,6 @@ CRC::Game CRC::m_games[] =
 	{0xBC8B3F50, TombRaiderLegend, US, 0}, // cutie comment
 	{0x365172A0, TombRaiderLegend, JP, 0},
 	{0x05177ECE, TombRaiderLegend, EU, 0},
-	{0x879CDA5E, StarWarsForceUnleashed, US, 0},
-	{0x137C792E, StarWarsForceUnleashed, US, 0},
-	{0xCC9BFDE3, StarWarsForceUnleashed, JP, 0},
-	{0xDAF2145C, StarWarsForceUnleashed, EU, 0},
-	{0x87109051, StarWarsForceUnleashed, EU, 0},
 	{0xBEBF8793, BurnoutTakedown, US, 0},
 	{0xBB2E845F, BurnoutTakedown, JP, 0},
 	{0x5F060991, BurnoutTakedown, KO, 0},
@@ -409,8 +396,6 @@ CRC::Game CRC::m_games[] =
 	{0xF088FA5B, DeathByDegreesTekkenNinaWilliams, KO, 0},
 	{0xE1D6F85E, DeathByDegreesTekkenNinaWilliams, US, 0},
 	{0x59683BB0, DeathByDegreesTekkenNinaWilliams, EU, 0},
-	{0x5B659BED, Grandia3, JP, 0},
-	{0x5B657DAD, Grandia3, US, 0},
 	{0x830B6FB1, TalesofSymphonia, JP, 0},
 	{0xFC0F8A5B, Simple2000Vol114, JP, 0},
 	{0xBDD9BAAD, UrbanReign, US, 0}, // cutie comment

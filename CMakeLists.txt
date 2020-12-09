@@ -20,7 +20,7 @@ include(Pcsx2Utils)
 
 check_no_parenthesis_in_path()
 detectOperatingSystem()
-check_compiler_version("4.8" "4.8")
+check_compiler_version("7.0" "7.0")
 
 #-------------------------------------------------------------------------------
 # Include specific module
@@ -35,10 +35,10 @@ get_git_version_info()
 write_svnrev_h()
 
 if(NOT NO_TRANSLATION)
-# make the translation
-if(EXISTS "${CMAKE_SOURCE_DIR}/locales")
-    add_subdirectory(locales)
-endif()
+    # make the translation
+    if(EXISTS "${CMAKE_SOURCE_DIR}/locales")
+        add_subdirectory(locales)
+    endif()
 endif()
 
 # make common

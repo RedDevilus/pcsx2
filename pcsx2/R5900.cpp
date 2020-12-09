@@ -32,6 +32,7 @@
 
 #include "Elfheader.h"
 #include "CDVD/CDVD.h"
+#include "USB/USB.h"
 #include "Patch.h"
 #include "GameDatabase.h"
 
@@ -109,8 +110,7 @@ void cpuReset()
 	ElfEntry = -1;
 
 	// Probably not the right place, but it has to be done when the ram is actually initialized
-	if(USBsetRAM != 0)
-		USBsetRAM(iopMem->Main);
+	USBsetRAM(iopMem->Main);
 
 	// FIXME: LastELF should be reset on media changes as well as on CPU resets, in
 	// the very unlikely case that a user swaps to another media source that "looks"
@@ -755,7 +755,12 @@ inline bool isBranchOrJump(u32 addr)
 {
 	u32 op = memRead32(addr);
 	const OPCODE& opcode = GetInstruction(op);
-
+	
+	// Return false for eret & syscall as they are branch type in pcsx2 debugging tools,
+	// but shouldn't have delay slot in isBreakpointNeeded/isMemcheckNeeded.
+	if ((opcode.flags == (IS_BRANCH | BRANCHTYPE_SYSCALL)) || (opcode.flags == (IS_BRANCH | BRANCHTYPE_ERET)))
+		return false;
+		
 	return (opcode.flags & IS_BRANCH) != 0;
 }
 

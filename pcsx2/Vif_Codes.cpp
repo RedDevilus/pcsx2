@@ -267,6 +267,7 @@ static __fi void _vifCode_MPG(int idx, u32 addr, const u32 *data, int size) {
 
 	if (idx && THREAD_VU1) {
 		vu1Thread.WriteMicroMem(addr, (u8*)data, size*4);
+		vifX.tag.addr = size * 4;
 		return;
 	}
 
@@ -491,10 +492,17 @@ template<int idx> static __fi int _vifCode_STColRow(const u32* data, u32* pmem2)
 	pxAssume(ret > 0);
 
 	switch (ret) {
-		case 4: pmem2[3] = data[3]; // Fall through
-		case 3: pmem2[2] = data[2]; // Fall through
-		case 2: pmem2[1] = data[1]; // Fall through
-		case 1: pmem2[0] = data[0];
+		case 4:
+			pmem2[3] = data[3];
+			[[fallthrough]];
+		case 3:
+			pmem2[2] = data[2];
+			[[fallthrough]];
+		case 2:
+			pmem2[1] = data[1];
+			[[fallthrough]];
+		case 1:
+			pmem2[0] = data[0];
 				break;
 		jNO_DEFAULT
 	}

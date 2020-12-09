@@ -33,12 +33,6 @@ class GSRendererOGL final : public GSRendererHW
 		PRIM_OVERLAP_NO
 	};
 
-	enum ACC_DATE {
-		ACC_DATE_NONE = 0,
-		ACC_DATE_FAST = 1,
-		ACC_DATE_FULL = 2
-	};
-
 	enum ACC_BLEND {
 		ACC_BLEND_NONE   = 0,
 		ACC_BLEND_BASIC  = 1,
@@ -73,9 +67,8 @@ class GSRendererOGL final : public GSRendererHW
 		inline void SetupIA(const float& sx, const float& sy);
 		inline void EmulateTextureShuffleAndFbmask();
 		inline void EmulateChannelShuffle(GSTexture** rt, const GSTextureCache::Source* tex);
-		inline void EmulateBlending(bool DATE_GL42);
+		inline void EmulateBlending(bool& DATE_GL42, bool& DATE_GL45);
 		inline void EmulateTextureSampler(const GSTextureCache::Source* tex);
-		inline void EmulateAtst(const int pass, const GSTextureCache::Source* tex);
 		inline void EmulateZbuffer();
 
 	public:

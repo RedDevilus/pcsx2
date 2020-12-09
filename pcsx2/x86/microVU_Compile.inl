@@ -561,10 +561,24 @@ void* mVUcompile(microVU& mVU, u32 startPC, uptr pState)
 		mVUcheckBadOp(mVU);
 		if (curI & _Ebit_) {
 			eBitPass1(mVU, branch);
+			// VU0 end of program MAC results can be read by COP2, so best to make sure the last instance is valid
+			// Needed for State of Emergency 2 and Driving Emotion Type-S
+			if(isVU0) mVUregs.needExactMatch |= 7;
 		}
 
 		if ((curI & _Mbit_) && isVU0) {
-			mVUup.mBit = true;
+			if (xPC > 0)
+			{
+				incPC(-2);
+				if (!(curI & _Mbit_)) { //If the last instruction was also M-Bit we don't need to sync again
+					incPC(2);
+					mVUup.mBit = true;
+				}
+				else
+					incPC(2);
+			}
+			else
+				mVUup.mBit = true;
 		}
 
 		if (curI & _Ibit_) {
@@ -611,7 +625,10 @@ void* mVUcompile(microVU& mVU, u32 startPC, uptr pState)
 		}
 
 		if (mVUup.mBit && !branch && !mVUup.eBit)
+		{
+			mVUregs.needExactMatch |= 7;
 			break;
+		}
 
 		if (mVUinfo.isEOB)
 			break;
@@ -652,6 +669,10 @@ void* mVUcompile(microVU& mVU, u32 startPC, uptr pState)
 				mVUDoDBit(mVU, &mFC);
 			}
 			else if (mVUup.mBit && !mVUup.eBit && !mVUinfo.isEOB) {
+				// Need to make sure the flags are exact, Gungrave does FCAND with Mbit, then directly after FMAND with M-bit
+				// Also call setupBranch to sort flag instances
+				
+				mVUsetupBranch(mVU, mFC);
 				// Make sure we save the current state so it can come back to it
 				u32* cpS = (u32*)&mVUregs;
 				u32* lpS = (u32*)&mVU.prog.lpState;
@@ -661,6 +682,7 @@ void* mVUcompile(microVU& mVU, u32 startPC, uptr pState)
 				mVUsetupRange(mVU, xPC, false);
 				incPC(2);
 				mVUendProgram(mVU, &mFC, 0);
+				normBranchCompile(mVU, xPC);
 				incPC(-2);
 				goto perf_and_return;
 			}
@@ -676,6 +698,12 @@ void* mVUcompile(microVU& mVU, u32 startPC, uptr pState)
 			goto perf_and_return;
 		}
 		else if (!mVUinfo.isBdelay) {
+			// Handle range wrapping
+			if ((xPC + 8) == mVU.microMemSize)
+			{
+				mVUsetupRange(mVU, xPC, false);
+				mVUsetupRange(mVU, 0, 1);
+			}
 			incPC(1);
 		}
 		else {
@@ -751,6 +779,7 @@ _mVUt void* __fastcall mVUcompileJIT(u32 startPC, uptr ptr) {
 	if (doJumpAsSameProgram) { // Treat jump as part of same microProgram
 		return mVUblockFetch(mVUx, startPC, ptr);
 	}
+	mVUx.regs().start_pc = startPC;
 	if (doJumpCaching) { // When doJumpCaching, ptr is a microBlock pointer
 		microVU& mVU = mVUx;
 		microBlock* pBlock = (microBlock*)ptr;

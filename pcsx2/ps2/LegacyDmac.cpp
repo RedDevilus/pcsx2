@@ -278,6 +278,12 @@ static __ri void DmaExec( void (*func)(), u32 mem, u32 value )
 		}
 		reg.chcr.MOD = 0x1;
 	}
+
+	// As tested on hardware, if NORMAL mode is started with 0 QWC it will actually transfer 1 QWC then underflows and transfer another 0xFFFF QWC's
+	// The easiest way to handle this is to just say 0x10000 QWC
+	if (reg.chcr.STR && !reg.chcr.MOD && reg.qwc == 0)
+		reg.qwc = 0x10000;
+
 	if (reg.chcr.STR && dmacRegs.ctrl.DMAE && !psHu8(DMAC_ENABLER+2))
 	{
 		func();
@@ -318,10 +324,22 @@ __fi bool dmacWrite32( u32 mem, mem32_t& value )
 			return false;
 		}
 
+		icase(D0_QWC) // dma0 - vif0
+		{
+			psHu32(mem) = (u16)value;
+			return false;
+		}
+
 		icase(D1_CHCR) // dma1 - vif1 - chcr
 		{
 			DMA_LOG("VIF1dma EXECUTE, value=0x%x", value);
 			DmaExec(dmaVIF1, mem, value);
+			return false;
+		}
+
+		icase(D1_QWC) // dma1 - vif1
+		{
+			psHu32(mem) = (u16)value;
 			return false;
 		}
 
@@ -332,10 +350,22 @@ __fi bool dmacWrite32( u32 mem, mem32_t& value )
 			return false;
 		}
 
+		icase(D2_QWC) // dma2 - gif
+		{
+			psHu32(mem) = (u16)value;
+			return false;
+		}
+
 		icase(D3_CHCR) // dma3 - fromIPU
 		{
 			DMA_LOG("IPU0dma EXECUTE, value=0x%x\n", value);
 			DmaExec(dmaIPU0, mem, value);
+			return false;
+		}
+
+		icase(D3_QWC) // dma3 - fromIPU
+		{
+			psHu32(mem) = (u16)value;
 			return false;
 		}
 
@@ -346,10 +376,22 @@ __fi bool dmacWrite32( u32 mem, mem32_t& value )
 			return false;
 		}
 
+		icase(D4_QWC) // dma4 - toIPU
+		{
+			psHu32(mem) = (u16)value;
+			return false;
+		}
+
 		icase(D5_CHCR) // dma5 - sif0
 		{
 			DMA_LOG("SIF0dma EXECUTE, value=0x%x", value);
 			DmaExec(dmaSIF0, mem, value);
+			return false;
+		}
+
+		icase(D5_QWC) // dma5 - sif0
+		{
+			psHu32(mem) = (u16)value;
 			return false;
 		}
 
@@ -360,6 +402,12 @@ __fi bool dmacWrite32( u32 mem, mem32_t& value )
 			return false;
 		}
 
+		icase(D6_QWC) // dma6 - sif1
+		{
+			psHu32(mem) = (u16)value;
+			return false;
+		}
+
 		icase(D7_CHCR) // dma7 - sif2
 		{
 			DMA_LOG("SIF2dma EXECUTE, value=0x%x", value);
@@ -367,10 +415,22 @@ __fi bool dmacWrite32( u32 mem, mem32_t& value )
 			return false;
 		}
 
+		icase(D7_QWC) // dma7 - sif2
+		{
+			psHu32(mem) = (u16)value;
+			return false;
+		}
+
 		icase(D8_CHCR) // dma8 - fromSPR
 		{
 			DMA_LOG("SPR0dma EXECUTE (fromSPR), value=0x%x", value);
 			DmaExec(dmaSPR0, mem, value);
+			return false;
+		}
+
+		icase(D8_QWC) // dma8 - fromSPR
+		{
+			psHu32(mem) = (u16)value;
 			return false;
 		}
 
@@ -409,6 +469,12 @@ __fi bool dmacWrite32( u32 mem, mem32_t& value )
 			return false;
 		}
 
+		icase(D9_QWC) // dma9 - toSPR
+		{
+			psHu32(mem) = (u16)value;
+			return false;
+		}
+
 		icase(DMAC_CTRL)
 		{
 			u32 oldvalue = psHu32(mem);
@@ -421,14 +487,50 @@ __fi bool dmacWrite32( u32 mem, mem32_t& value )
 			{
 				if (!QueuedDMA.empty()) StartQueuedDMA();
 			}
+#ifdef PCSX2_DEVBUILD
 			if ((oldvalue & 0x30) != (value & 0x30))
 			{
-				DevCon.Warning("32bit Stall Source Changed to %x", (value & 0x30) >> 4);
+				std::string new_source;
+
+				switch ((value & 0x30) >> 4)
+				{
+				case 1:
+					new_source = "SIF0";
+					break;
+				case 2:
+					new_source = "fromSPR";
+					break;
+				case 3:
+					new_source = "fromIPU";
+					break;
+				default:
+					new_source = "None";
+					break;
+				}
+				DevCon.Warning("32bit Stall Source Changed to %s", new_source.c_str());
 			}
 			if ((oldvalue & 0xC0) != (value & 0xC0))
 			{
-				DevCon.Warning("32bit Stall Destination Changed to %x", (value & 0xC0) >> 4);
+				std::string new_dest;
+
+				switch ((value & 0xC0) >> 6)
+				{
+				case 1:
+					new_dest = "VIF1";
+					break;
+				case 2:
+					new_dest = "GIF";
+					break;
+				case 3:
+					new_dest = "SIF1";
+					break;
+				default:
+					new_dest = "None";
+					break;
+				}
+				DevCon.Warning("32bit Stall Destination Changed to %s", new_dest.c_str());
 			}
+#endif
 			return false;
 		}
 
