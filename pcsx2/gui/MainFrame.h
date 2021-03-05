@@ -115,9 +115,10 @@ protected:
 	wxMenu& m_menuConfig;
 	wxMenu& m_menuWindow;
 
-	wxMenu&	m_menuCapture;
-	wxMenu&	m_submenuVideoCapture;
-	wxMenu&	m_submenuScreenshot;
+	wxMenu& m_menuCapture;
+	wxMenu& m_submenuVideoCapture;
+	wxMenu& m_submenuIPC;
+	wxMenu& m_submenuScreenshot;
 
 #ifndef DISABLE_RECORDING
 	wxMenu& m_menuRecording;
@@ -169,11 +170,13 @@ public:
 
 	void ApplyConfigToGui(AppConfig& configToApply, int flags = 0);
 	void CommitPreset_noTrigger();
-	void AppendKeycodeNamesToMenuOptions();
+	void AppendShortcutToMenuOption(wxMenuItem& item, wxString keyCodeStr);
 	void UpdateStatusBar();
 #ifndef DISABLE_RECORDING
 	void initializeRecordingMenuItem(MenuIdentifiers menuId, wxString keyCodeStr, bool enable = true);
 	void enableRecordingMenuItem(MenuIdentifiers menuId, bool enable);
+	void StartInputRecording();
+	void StopInputRecording();
 #endif
 
 protected:
@@ -191,9 +194,10 @@ protected:
 	void OnActivate(wxActivateEvent& evt);
 
 	void Menu_SysSettings_Click(wxCommandEvent& event);
-	void Menu_NetworkSettings_Click(wxCommandEvent &event);
+	void Menu_NetworkSettings_Click(wxCommandEvent& event);
 	void Menu_AudioSettings_Click(wxCommandEvent& event);
 	void Menu_USBSettings_Click(wxCommandEvent& event);
+	void Menu_PADSettings_Click(wxCommandEvent& event);
 	void Menu_McdSettings_Click(wxCommandEvent& event);
 	void Menu_WindowSettings_Click(wxCommandEvent& event);
 	void Menu_GSSettings_Click(wxCommandEvent& event);
@@ -205,7 +209,8 @@ protected:
 	void Menu_EnableBackupStates_Click(wxCommandEvent& event);
 	void Menu_EnablePatches_Click(wxCommandEvent& event);
 	void Menu_EnableCheats_Click(wxCommandEvent& event);
-	void Menu_EnableIPC_Click(wxCommandEvent& event);
+	void Menu_IPC_Enable_Click(wxCommandEvent& event);
+	void Menu_IPC_Settings_Click(wxCommandEvent& event);
 	void Menu_EnableWideScreenPatches_Click(wxCommandEvent& event);
 #ifndef DISABLE_RECORDING
 	void Menu_EnableRecordingTools_Click(wxCommandEvent& event);
@@ -257,10 +262,10 @@ protected:
 	void Menu_Recording_New_Click(wxCommandEvent& event);
 	void Menu_Recording_Play_Click(wxCommandEvent& event);
 	void Menu_Recording_Stop_Click(wxCommandEvent& event);
-	void Menu_Recording_TogglePause_Click(wxCommandEvent &event);
-	void Menu_Recording_FrameAdvance_Click(wxCommandEvent &event);
-	void Menu_Recording_ToggleRecordingMode_Click(wxCommandEvent &event);
-	void Menu_Recording_VirtualPad_Open_Click(wxCommandEvent &event);
+	void Menu_Recording_TogglePause_Click(wxCommandEvent& event);
+	void Menu_Recording_FrameAdvance_Click(wxCommandEvent& event);
+	void Menu_Recording_ToggleRecordingMode_Click(wxCommandEvent& event);
+	void Menu_Recording_VirtualPad_Open_Click(wxCommandEvent& event);
 #endif
 
 	void _DoBootCdvd();

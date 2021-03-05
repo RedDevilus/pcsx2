@@ -1,6 +1,3 @@
-### TODO
-# Hardcode GAMEINDEX_DIR, if default is fine for everybody
-
 ### Select the build type
 # Use Release/Devel/Debug      : -DCMAKE_BUILD_TYPE=Release|Devel|Debug
 # Enable/disable the stripping : -DCMAKE_BUILD_STRIP=TRUE|FALSE
@@ -10,11 +7,6 @@
 # control C flags             : -DUSER_CMAKE_C_FLAGS="cflags"
 # control C++ flags           : -DUSER_CMAKE_CXX_FLAGS="cxxflags"
 # control link flags          : -DUSER_CMAKE_LD_FLAGS="ldflags"
-
-### Packaging options
-# Plugin installation path    : -DPLUGIN_DIR="/usr/lib/pcsx2"
-# GL Shader installation path : -DGLSL_SHADER_DIR="/usr/share/games/pcsx2"
-# Game DB installation path   : -DGAMEINDEX_DIR="/usr/share/games/pcsx2"
 #-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -45,34 +37,17 @@ option(DISABLE_CHEATS_ZIP "Disable including the cheats_ws.zip file")
 option(DISABLE_PCSX2_WRAPPER "Disable including the PCSX2-linux.sh file")
 option(DISABLE_SETCAP "Do not set files capabilities")
 option(XDG_STD "Use XDG standard path instead of the standard PCSX2 path")
-option(EXTRA_PLUGINS "Build various 'extra' plugins")
-option(PORTAUDIO_API "Build portaudio support on spu2x" ON)
-option(SDL2_API "Use SDL2 on spu2x and onepad (wxWidget mustn't be built with SDL1.2 support" ON)
+option(PORTAUDIO_API "Build portaudio support on SPU2" ON)
+option(SDL2_API "Use SDL2 on SPU2 and PAD Linux (wxWidget mustn't be built with SDL1.2 support" ON)
 option(GTK2_API "Use GTK2 api (legacy)")
 
 if(PACKAGE_MODE)
-    if(NOT DEFINED PLUGIN_DIR)
-        set(PLUGIN_DIR "${CMAKE_INSTALL_PREFIX}/lib/games/PCSX2")
-    endif()
-
-    if(NOT DEFINED GAMEINDEX_DIR)
-        set(GAMEINDEX_DIR "${CMAKE_INSTALL_PREFIX}/share/games/PCSX2")
-    endif()
-
-    if(NOT DEFINED BIN_DIR)
-        set(BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin")
-    endif()
-
-    if(NOT DEFINED DOC_DIR)
-        set(DOC_DIR "${CMAKE_INSTALL_PREFIX}/share/doc/PCSX2")
-    endif()
-
-    if(NOT DEFINED MAN_DIR)
-        set(MAN_DIR "${CMAKE_INSTALL_PREFIX}/share/man")
-    endif()
-
     # Compile all source codes with those defines
-    add_definitions(-DPLUGIN_DIR_COMPILATION=${PLUGIN_DIR} -DGAMEINDEX_DIR_COMPILATION=${GAMEINDEX_DIR} -DDOC_DIR_COMPILATION=${DOC_DIR})
+    add_definitions(
+        -DPLUGIN_DIR_COMPILATION=${CMAKE_INSTALL_FULL_LIBDIR}/PCSX2
+        -DGAMEINDEX_DIR_COMPILATION=${CMAKE_INSTALL_FULL_DATADIR}/PCSX2
+        -DDOC_DIR_COMPILATION=${CMAKE_INSTALL_FULL_DOCDIR}
+    )
 endif()
 
 if(APPLE)

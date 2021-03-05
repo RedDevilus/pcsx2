@@ -73,7 +73,15 @@ void mVUinit(microVU& mVU, uint vuIndex) {
 
 // Resets Rec Data
 void mVUreset(microVU& mVU, bool resetReserve) {
-
+	if (THREAD_VU1)
+	{
+		// If MTVU is toggled on during gameplay we need to flush the running VU1 program, else it gets in a mess
+		if (VU0.VI[REG_VPU_STAT].UL & 0x100)
+		{
+			CpuVU1->Execute(vu1RunCycles);
+		}
+		VU0.VI[REG_VPU_STAT].UL &= ~0x100;
+	}
 	// Restore reserve to uncommitted state
 	if (resetReserve) mVU.cache_reserve->Reset();
 
@@ -309,6 +317,13 @@ _mVUt __fi void* mVUsearchProg(u32 startPC, uptr pState) {
 	// Because the VU's can now run in sections and not whole programs at once
 	// we need to set the current block so it gets the right program back
 	quick.block = mVU.prog.cur->block[startPC / 8];
+
+	// Sanity check, in case for some reason the program compilation aborted half way through
+	if (quick.block == nullptr)
+	{
+		void* entryPoint = mVUblockFetch(mVU, startPC, pState);
+		return entryPoint;
+	}
 	return mVUentryGet(mVU, quick.block, startPC, pState);
 }
 

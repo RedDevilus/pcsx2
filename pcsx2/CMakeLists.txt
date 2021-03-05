@@ -56,6 +56,11 @@ if(XDG_STD)
     set(pcsx2FinalFlags ${pcsx2FinalFlags} -DXDG_STD)
 endif()
 
+if(SDL_FOUND OR SDL2_FOUND)
+    set(pcsx2FinalFlags ${pcsx2FinalFlags} -DSDL_BUILD)
+endif()
+
+
 set(Output PCSX2)
 
 # Main pcsx2 source
@@ -249,7 +254,6 @@ set(pcsx2SPU2Sources
 	SPU2/SndOut.cpp
 	SPU2/SndOut_SDL.cpp
 	SPU2/spu2freeze.cpp
-	SPU2/spu2replay.cpp
 	SPU2/spu2sys.cpp
 	SPU2/Timestretcher.cpp
 	SPU2/Wavedump_wav.cpp
@@ -274,13 +278,13 @@ set(pcsx2SPU2Headers
 	SPU2/defs.h
 	SPU2/Dma.h
 	SPU2/Global.h
+	SPU2/interpolate_table.h
 	SPU2/Lowpass.h
 	SPU2/Mixer.h
 	SPU2/spu2.h
 	SPU2/regs.h
 	SPU2/SndOut.h
 	SPU2/spdif.h
-	SPU2/spu2replay.h
 	SPU2/WavFile.h
 	SPU2/Linux/Alsa.h
 	SPU2/Linux/Config.h
@@ -310,6 +314,17 @@ compile_gresources( pcsx2DEV9UIHeaders
 
 # DEV9 sources
 set(pcsx2DEV9Sources
+	DEV9/ATA/Commands/ATA_Command.cpp
+	DEV9/ATA/Commands/ATA_CmdDMA.cpp
+	DEV9/ATA/Commands/ATA_CmdExecuteDeviceDiag.cpp
+	DEV9/ATA/Commands/ATA_CmdNoData.cpp
+	DEV9/ATA/Commands/ATA_CmdPIOData.cpp
+	DEV9/ATA/Commands/ATA_CmdSMART.cpp
+	DEV9/ATA/Commands/ATA_SCE.cpp
+	DEV9/ATA/ATA_Info.cpp
+	DEV9/ATA/ATA_State.cpp
+	DEV9/ATA/ATA_Transfer.cpp
+	DEV9/ATA/HddCreate.cpp
 	DEV9/smap.cpp
 	DEV9/DEV9.cpp
 	DEV9/flash.cpp
@@ -322,8 +337,9 @@ set(pcsx2DEV9Sources
 
 # DEV9 headers
 set(pcsx2DEV9Headers
+	DEV9/ATA/ATA.h
+	DEV9/ATA/HddCreate.h
 	DEV9/DEV9.h
-	DEV9/ata.h
 	DEV9/net.h
 	DEV9/pcap_io.h
 	DEV9/smap.h
@@ -446,6 +462,95 @@ if(PULSEAUDIO_FOUND)
     set(pcsx2USBHeaders ${pcsx2USBHeaders} USB/usb-mic/audiodev-pulse.h)
 endif()
 
+
+
+# PAD resources pre-compilation
+set(PADImgHeader "${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/ImgHeader")
+set(PADImg "${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/Img")
+include_directories ("${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/")
+
+file(MAKE_DIRECTORY ${PADImgHeader})
+
+foreach(result_file IN ITEMS
+        analog circle cross dp_bottom dp_left dp_right dp_up dualshock2
+        joystick_cursor l1 r1 l2 r2 l3 r3 select square start triangle arrow_up
+        arrow_bottom arrow_left arrow_right)
+    add_custom_command(
+        OUTPUT  "${PADImgHeader}/${result_file}.h"
+        COMMAND perl ${CMAKE_SOURCE_DIR}/linux_various/hex2h.pl "${PADImg}/${result_file}.png" "${PADImgHeader}/${result_file}" )
+endforeach()
+
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/resources_pad.h
+    COMMAND glib-compile-resources --sourcedir "${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res" --generate-header
+    --c-name PAD_res "${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res/PAD-res.xml" --target=${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/resources_pad.h
+    DEPENDS ${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res/PAD-res.xml ${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res/game_controller_db.txt)
+
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/resources_pad.cpp
+    COMMAND glib-compile-resources --sourcedir "${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res" --generate-source
+    --c-name PAD_res "${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res/PAD-res.xml" --target=${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/resources_pad.cpp
+    DEPENDS ${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res/PAD-res.xml ${CMAKE_SOURCE_DIR}/pcsx2/PAD/Linux/res/game_controller_db.txt)
+
+
+# PAD/Linux sources 
+set(pcsx2PADSources
+    PAD/Linux/controller.cpp
+    PAD/Linux/GamePad.cpp
+    PAD/Linux/SDL/joystick.cpp
+    PAD/Linux/keyboard.cpp
+    PAD/Linux/KeyStatus.cpp
+    PAD/Linux/PAD.cpp
+    PAD/Linux/state_management.cpp
+    PAD/Linux/wx_dialog/dialog.cpp
+    PAD/Linux/wx_dialog/opPanel.cpp
+    PAD/Linux/wx_dialog/GamepadConfiguration.cpp
+    PAD/Linux/wx_dialog/JoystickConfiguration.cpp
+    PAD/Linux/ini.cpp
+    PAD/Linux/linux.cpp
+    ${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/resources_pad.cpp
+    )
+
+# PAD/Linux headers
+set(pcsx2PADHeaders
+    PAD/Linux/bitwise.h
+    PAD/Linux/controller.h
+    PAD/Linux/GamePad.h
+    PAD/Linux/SDL/joystick.h
+    PAD/Linux/keyboard.h
+    PAD/Linux/KeyStatus.h
+    PAD/Linux/PAD.h
+    PAD/Linux/state_management.h
+    PAD/Linux/wx_dialog/opPanel.h
+    PAD/Linux/wx_dialog/GamepadConfiguration.h
+    PAD/Linux/wx_dialog/JoystickConfiguration.h
+    ${CMAKE_BINARY_DIR}/pcsx2/PAD/Linux/resources_pad.h
+    # images
+    ${PADImgHeader}/analog.h
+    ${PADImgHeader}/circle.h
+    ${PADImgHeader}/cross.h
+    ${PADImgHeader}/dp_bottom.h
+    ${PADImgHeader}/dp_left.h
+    ${PADImgHeader}/dp_right.h
+    ${PADImgHeader}/dp_up.h
+    ${PADImgHeader}/dualshock2.h
+    ${PADImgHeader}/joystick_cursor.h
+    ${PADImgHeader}/l1.h
+    ${PADImgHeader}/r1.h
+    ${PADImgHeader}/l2.h
+    ${PADImgHeader}/r2.h
+    ${PADImgHeader}/l3.h
+    ${PADImgHeader}/r3.h
+    ${PADImgHeader}/select.h
+    ${PADImgHeader}/square.h
+    ${PADImgHeader}/start.h
+    ${PADImgHeader}/triangle.h
+    ${PADImgHeader}/arrow_up.h
+    ${PADImgHeader}/arrow_bottom.h
+    ${PADImgHeader}/arrow_left.h
+    ${PADImgHeader}/arrow_right.h
+    )
+
 # DebugTools sources
 set(pcsx2DebugToolsSources
 	DebugTools/DebugInterface.cpp
@@ -506,6 +611,7 @@ set(pcsx2GuiSources
 	gui/Dialogs/McdConfigDialog.cpp
 	gui/Dialogs/PickUserModeDialog.cpp
 	gui/Dialogs/SysConfigDialog.cpp
+	gui/Dialogs/IPCDialog.cpp
 	gui/Debugger/BreakpointWindow.cpp
 	gui/Debugger/CtrlDisassemblyView.cpp
 	gui/Debugger/CtrlRegisterList.cpp
@@ -880,6 +986,8 @@ set(Common
 	${pcsx2SPU2Headers}
 	${pcsx2DEV9Sources}
 	${pcsx2DEV9Headers}
+	${pcsx2PADHeaders}
+	${pcsx2PADSources}
 	${pcsx2DebugToolsSources}
 	${pcsx2GuiSources}
 	${pcsx2GuiResources}
@@ -912,6 +1020,7 @@ if(Linux)
 		
 	set(Platform_Libs
 		${LIBUDEV_LIBRARIES}
+		${X11_LIBRARIES}
 		)
 endif()
 
@@ -971,9 +1080,6 @@ endif()
 if(BUILTIN_GS)
     set(pcsx2FinalLibs "${pcsx2FinalLibs} GSdx")
 endif()
-if(BUILTIN_PAD)
-    set(pcsx2FinalLibs "${pcsx2FinalLibs} onepad-1.2.0")
-endif()
 
 # additonal include directories
 include_directories(
@@ -1025,7 +1131,9 @@ if (APPLE)
 	)
 
 	target_sources(${Output} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/gui/Resources/PCSX2.icns")
+	target_sources(${Output} PRIVATE "${CMAKE_SOURCE_DIR}/bin/GameIndex.yaml")
 	set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/gui/Resources/PCSX2.icns" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+	set_source_files_properties("${CMAKE_SOURCE_DIR}/bin/GameIndex.yaml" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
 	# If they say to skip postprocess bundle, leave the target in but make it so they have
 	# to manually run it
@@ -1044,8 +1152,8 @@ endif()
 
 if(NOT DISABLE_SETCAP)
     if(PACKAGE_MODE)
-        install(CODE "execute_process(COMMAND /bin/bash -c \"echo 'Enabling networking capability on Linux...';set -x; [ -f ${BIN_DIR}/${Output} ] && sudo setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' ${BIN_DIR}/${Output}; set +x\")")
+        install(CODE "execute_process(COMMAND /bin/bash -c \"echo 'Enabling networking capability on Linux...';set -x; [ -f '${CMAKE_INSTALL_FULL_BINDIR}/${Output}' ] && sudo setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' '${CMAKE_INSTALL_FULL_BINDIR}/${Output}'; set +x\")")
     else()
-        install(CODE "execute_process(COMMAND /bin/bash -c \"echo 'Enabling networking capability on Linux...';set -x; [ -f ${CMAKE_SOURCE_DIR}/bin/${Output} ] && sudo setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' ${CMAKE_SOURCE_DIR}/bin/${Output}; set +x\")")
+        install(CODE "execute_process(COMMAND /bin/bash -c \"echo 'Enabling networking capability on Linux...';set -x; [ -f '${CMAKE_SOURCE_DIR}/bin/${Output}' ] && sudo setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' '${CMAKE_SOURCE_DIR}/bin/${Output}'; set +x\")")
     endif()
 endif()

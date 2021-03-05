@@ -431,7 +431,7 @@ __fi void _cpuEventTest_Shared()
 	// We're in a EventTest.  All dynarec registers are flushed
 	// so there is no need to freeze registers here.
 	CpuVU0->ExecuteBlock();
-
+	CpuVU1->ExecuteBlock();
 	// Note:  We don't update the VU1 here because it runs it's micro-programs in
 	// one shot always.  That is, when a program is executed the VU1 doesn't even
 	// bother to return until the program is completely finished.
@@ -771,11 +771,11 @@ inline bool isBranchOrJump(u32 addr)
 int isBreakpointNeeded(u32 addr)
 {
 	int bpFlags = 0;
-	if (CBreakPoints::IsAddressBreakPoint(addr))
+	if (CBreakPoints::IsAddressBreakPoint(BREAKPOINT_EE, addr))
 		bpFlags += 1;
 
 	// there may be a breakpoint in the delay slot
-	if (isBranchOrJump(addr) && CBreakPoints::IsAddressBreakPoint(addr+4))
+	if (isBranchOrJump(addr) && CBreakPoints::IsAddressBreakPoint(BREAKPOINT_EE, addr+4))
 		bpFlags += 2;
 
 	return bpFlags;

@@ -38,7 +38,11 @@ struct GSSetting
 	}
 };
 
+#ifdef _WIN32
+const wchar_t* dialog_message(int ID, bool* updateText = NULL);
+#else
 const char* dialog_message(int ID, bool* updateText = NULL);
+#endif
 
 #ifndef _WIN32
 enum {
@@ -74,7 +78,7 @@ enum {
 	IDC_MIPMAP_HW,
 	IDC_PRELOAD_GS,
 	IDC_FAST_TC_INV,
-	IDC_LARGE_FB,
+	IDC_CONSERVATIVE_FB,
 	IDC_LINEAR_PRESENT,
 	IDC_AUTO_FLUSH_HW,
 	IDC_AUTO_FLUSH_SW,

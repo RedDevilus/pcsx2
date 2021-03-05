@@ -13,6 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "PrecompiledHeader.h"
 
 #include <stdlib.h>
 
@@ -45,6 +46,10 @@ void SaveConf()
 	xmlNewChild(root_node, NULL, BAD_CAST "Eth",
 				BAD_CAST config.Eth);
 
+	sprintf(buff, "%d", (int)config.EthApi);
+	xmlNewChild(root_node, NULL, BAD_CAST "EthApi",
+				BAD_CAST buff);
+
 	xmlNewChild(root_node, NULL, BAD_CAST "Hdd",
 				BAD_CAST config.Hdd);
 
@@ -66,7 +71,7 @@ void SaveConf()
 
 	const std::string file(GetSettingsFolder().Combine(wxString("DEV9.cfg")).GetFullPath());
 
-	fprintf(stderr, "CONF: %s", file.c_str());
+	Console.WriteLn("CONF: %s", file.c_str());
 
 	xmlSaveFormatFileEnc(file.c_str(), doc, "UTF-8", 1);
 	//    free(configFile);
@@ -101,6 +106,7 @@ void LoadConf()
 		SysMessage("Unable to parse configuration file! Suggest deleting it and starting over.");
 	}
 
+	bool foundEthType = false;
 	for (cur_node = xmlDocGetRootElement(doc)->children; cur_node; cur_node = cur_node->next)
 	{
 		if (cur_node->type == XML_ELEMENT_NODE)
@@ -109,6 +115,11 @@ void LoadConf()
 			if (0 == strcmp((const char*)cur_node->name, "Eth"))
 			{
 				strcpy(config.Eth, (const char*)xmlNodeGetContent(cur_node));
+			}
+			if (0 == strcmp((const char*)cur_node->name, "EthApi"))
+			{
+				foundEthType = true;
+				config.EthApi = (NetApi)atoi((const char*)xmlNodeGetContent(cur_node));
 			}
 			if (0 == strcmp((const char*)cur_node->name, "Hdd"))
 			{
@@ -128,6 +139,9 @@ void LoadConf()
 			}
 		}
 	}
+
+	if (!foundEthType)
+		config.EthApi = NetApi::PCAP_Switched;
 
 	//    free(configFile);
 	xmlFreeDoc(doc);

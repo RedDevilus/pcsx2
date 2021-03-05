@@ -28,7 +28,6 @@
 
 #ifndef DISABLE_RECORDING
 #include "Recording/InputRecording.h"
-#include "Recording/VirtualPad/VirtualPad.h"
 #endif
 
 #include <wx/cmdline.h>
@@ -80,16 +79,10 @@ void Pcsx2App::OpenMainFrame()
 	m_id_Disassembler = disassembly->GetId();
 
 #ifndef DISABLE_RECORDING
-	VirtualPad* virtualPad0 = new VirtualPad(mainFrame, 0, g_Conf->inputRecording);
-	g_InputRecording.setVirtualPadPtr(virtualPad0, 0);
-	m_id_VirtualPad[0] = virtualPad0->GetId();
-
-	VirtualPad* virtualPad1 = new VirtualPad(mainFrame, 1, g_Conf->inputRecording);
-	g_InputRecording.setVirtualPadPtr(virtualPad1, 1);
-	m_id_VirtualPad[1] = virtualPad1->GetId();
-
 	NewRecordingFrame* newRecordingFrame = new NewRecordingFrame(mainFrame);
 	m_id_NewRecordingFrame = newRecordingFrame->GetId();
+	if (g_Conf->EmuOptions.EnableRecordingTools)
+		g_InputRecording.InitVirtualPadWindows(mainFrame);
 #endif
 
 	if (g_Conf->EmuOptions.Debugger.ShowDebuggerOnStart)
@@ -649,12 +642,6 @@ void Pcsx2App::CleanupOnExit()
 		Console.Indent().Error(ex.FormatDiagnosticMessage());
 	}
 
-	// Notice: deleting the plugin manager (unloading plugins) here causes Lilypad to crash,
-	// likely due to some pending message in the queue that references lilypad procs.
-	// We don't need to unload plugins anyway tho -- shutdown is plenty safe enough for
-	// closing out all the windows.  So just leave it be and let the plugins get unloaded
-	// during the wxApp destructor. -- air
-
 	// FIXME: performing a wxYield() here may fix that problem. -- air
 
 	pxDoAssert = pxAssertImpl_LogIt;
@@ -742,6 +729,7 @@ Pcsx2App::Pcsx2App()
 		_("Save &As...");
 		_("&Help");
 		_("&Home");
+		_("&Window");
 
 		_("Show about dialog.")
 	}

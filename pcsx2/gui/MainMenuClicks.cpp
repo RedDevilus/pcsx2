@@ -23,6 +23,11 @@
 #include "System/SysThreads.h"
 #include "DEV9/DEV9.h"
 #include "USB/USB.h"
+#ifdef _WIN32
+#include "PAD/Windows/PAD.h"
+#else
+#include "PAD/Linux/PAD.h"
+#endif
 
 #include "ConsoleLogger.h"
 #include "MainFrame.h"
@@ -48,6 +53,11 @@ void MainEmuFrame::Menu_SysSettings_Click(wxCommandEvent& event)
 	AppOpenDialog<SysConfigDialog>(this);
 }
 
+void MainEmuFrame::Menu_IPC_Settings_Click(wxCommandEvent& event)
+{
+	AppOpenDialog<IPCDialog>(this);
+}
+
 void MainEmuFrame::Menu_AudioSettings_Click(wxCommandEvent& event)
 {
 	SPU2configure();
@@ -60,7 +70,7 @@ void MainEmuFrame::Menu_McdSettings_Click(wxCommandEvent& event)
 	AppOpenModalDialog<McdConfigDialog>(wxEmptyString, this);
 }
 
-void MainEmuFrame::Menu_NetworkSettings_Click(wxCommandEvent &event)
+void MainEmuFrame::Menu_NetworkSettings_Click(wxCommandEvent& event)
 {
 	DEV9configure();
 }
@@ -70,7 +80,12 @@ void MainEmuFrame::Menu_USBSettings_Click(wxCommandEvent& event)
 	USBconfigure();
 }
 
-void MainEmuFrame::Menu_WindowSettings_Click(wxCommandEvent &event)
+void MainEmuFrame::Menu_PADSettings_Click(wxCommandEvent& event)
+{
+	PADconfigure();
+}
+
+void MainEmuFrame::Menu_WindowSettings_Click(wxCommandEvent& event)
 {
 	wxCommandEvent evt(pxEvt_SetSettingsPage);
 	evt.SetString(L"GS Window");
@@ -423,19 +438,7 @@ void MainEmuFrame::_DoBootCdvd()
 			return;
 		}
 	}
-	
-	if (!g_Conf->EmuOptions.FullBootConfig && g_Conf->EmuOptions.UseBOOT2Injection)
-	{
-		g_Conf->EmuOptions.UseBOOT2Injection = false;
-		g_Conf->EmuOptions.FullBootConfig = true;
 
-		wxString message;
-		message.Printf(_("For the first run of this version of the emulator, you will be forced to boot to your BIOS. You are required to configure the BIOS language before proceeding. Once this has been done you can Fast Boot normally."));
-		Msgbox::Alert(message, _("BIOS Configuration"));
-	}
-	else
-		g_Conf->EmuOptions.FullBootConfig = true;
-	
 	sApp.SysExecute(g_Conf->CdvdSource);
 }
 
@@ -566,9 +569,9 @@ void MainEmuFrame::Menu_EnableCheats_Click(wxCommandEvent&)
 	AppSaveSettings();
 }
 
-void MainEmuFrame::Menu_EnableIPC_Click(wxCommandEvent&)
+void MainEmuFrame::Menu_IPC_Enable_Click(wxCommandEvent&)
 {
-	g_Conf->EmuOptions.EnableIPC = GetMenuBar()->IsChecked(MenuId_EnableIPC);
+	g_Conf->EmuOptions.EnableIPC = GetMenuBar()->IsChecked(MenuId_IPC_Enable);
 	AppApplySettings();
 	AppSaveSettings();
 }
@@ -601,6 +604,7 @@ void MainEmuFrame::Menu_EnableRecordingTools_Click(wxCommandEvent& event)
 	if (checked)
 	{
 		GetMenuBar()->Insert(TopLevelMenu_InputRecording, &m_menuRecording, _("&Input Record"));
+		g_InputRecording.InitVirtualPadWindows(this);
 		SysConsole.recordingConsole.Enabled = true;
 		// Enable Recording Keybindings
 		if (GSFrame* gsFrame = wxGetApp().GetGsFramePtr())
@@ -614,8 +618,7 @@ void MainEmuFrame::Menu_EnableRecordingTools_Click(wxCommandEvent& event)
 	else
 	{
 		//Properly close any currently loaded recording file before disabling
-		if (g_InputRecording.IsActive())
-			Menu_Recording_Stop_Click(event);
+		StopInputRecording();
 		GetMenuBar()->Remove(TopLevelMenu_InputRecording);
 		// Always turn controller logs off, but never turn it on by default
 		SysConsole.controlInfo.Enabled = checked;
@@ -633,6 +636,11 @@ void MainEmuFrame::Menu_EnableRecordingTools_Click(wxCommandEvent& event)
 	}
 
 	g_Conf->EmuOptions.EnableRecordingTools = checked;
+	// Update GS Title Frequency
+	if (GSFrame* gsFrame = wxGetApp().GetGsFramePtr())
+	{
+		gsFrame->UpdateTitleUpdateFreq();
+	}
 	// Enable Recording Logs
 	ConsoleLogFrame* progLog = wxGetApp().GetProgramLog();
 	progLog->UpdateLogList();
@@ -721,7 +729,15 @@ protected:
 	void InvokeEvent()
 	{
 		if (CoreThread.IsOpen())
+		{
 			CoreThread.Suspend();
+#ifndef DISABLE_RECORDING
+			// Disable recording controls that only make sense if the game is running
+			sMainFrame.enableRecordingMenuItem(MenuId_Recording_FrameAdvance, false);
+			sMainFrame.enableRecordingMenuItem(MenuId_Recording_TogglePause, false);
+			sMainFrame.enableRecordingMenuItem(MenuId_Recording_ToggleRecordingMode, false);
+#endif
+		}
 		else
 			CoreThread.Resume();
 	}
@@ -763,31 +779,7 @@ void MainEmuFrame::Menu_ConfigPlugin_Click(wxCommandEvent& event)
 	wxWindowDisabler disabler;
 	ScopedCoreThreadPause paused_core(new SysExecEvent_SaveSinglePlugin(pid));
 
-#ifndef DISABLE_RECORDING
-	if (pid == PluginId_PAD)
-	{
-		// The recording features involve pausing emulation, and can be resumed ideally via key-bindings.
-		//
-		// However, since the PAD plugin is used to do so, if it's closed then there is nothing to read
-		// the keybind resulting producing an unrecovable state.
-		//
-		// If the CoreThread is paused prior to opening the PAD plugin settings then when the settings
-		// are closed the PAD will not re-open. To avoid this, we resume emulation prior to the plugins
-		// configuration handler doing so.
-		if (g_Conf->EmuOptions.EnableRecordingTools && g_InputRecordingControls.IsPaused())
-		{
-			g_InputRecordingControls.Resume();
-			GetCorePlugins().Configure(pid);
-			g_InputRecordingControls.Pause();
-		}
-		else
-			GetCorePlugins().Configure(pid);
-	}
-	else
-		GetCorePlugins().Configure(pid);
-#else
 	GetCorePlugins().Configure(pid);
-#endif
 }
 
 void MainEmuFrame::Menu_Debug_Open_Click(wxCommandEvent& event)
@@ -943,7 +935,7 @@ void MainEmuFrame::Menu_Capture_Screenshot_Screenshot_Click(wxCommandEvent& even
 	GSmakeSnapshot(g_Conf->Folders.Snapshots.ToAscii());
 }
 
-void MainEmuFrame::Menu_Capture_Screenshot_Screenshot_As_Click(wxCommandEvent &event)
+void MainEmuFrame::Menu_Capture_Screenshot_Screenshot_As_Click(wxCommandEvent& event)
 {
 	if (!CoreThread.IsOpen())
 		return;
@@ -956,7 +948,7 @@ void MainEmuFrame::Menu_Capture_Screenshot_Screenshot_As_Click(wxCommandEvent &e
 	wxFileDialog fileDialog(this, _("Select a file"), g_Conf->Folders.Snapshots.ToAscii(), wxEmptyString, "PNG files (*.png)|*.png", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 
 	if (fileDialog.ShowModal() == wxID_OK)
-		GSmakeSnapshot(fileDialog.GetPath());
+		GSmakeSnapshot(fileDialog.GetPath().c_str());
 
 	// Resume emulation
 	if (!wasPaused)
@@ -967,34 +959,35 @@ void MainEmuFrame::Menu_Capture_Screenshot_Screenshot_As_Click(wxCommandEvent &e
 void MainEmuFrame::Menu_Recording_New_Click(wxCommandEvent& event)
 {
 	const bool initiallyPaused = g_InputRecordingControls.IsPaused();
+
 	if (!initiallyPaused)
 		g_InputRecordingControls.PauseImmediately();
+
 	NewRecordingFrame* newRecordingFrame = wxGetApp().GetNewRecordingFramePtr();
 	if (newRecordingFrame)
 	{
-		if (newRecordingFrame->ShowModal() == wxID_CANCEL)
+		if (newRecordingFrame->ShowModal(CoreThread.IsOpen()) != wxID_CANCEL)
 		{
-			if (!initiallyPaused)
-				g_InputRecordingControls.Resume();
-			return;
+			if (g_InputRecording.Create(newRecordingFrame->GetFile(), newRecordingFrame->GetFrom(), newRecordingFrame->GetAuthor()))
+			{
+				if (!g_InputRecording.GetInputRecordingData().FromSaveState())
+					StartInputRecording();
+				return;
+			}
 		}
-		if (!g_InputRecording.Create(newRecordingFrame->GetFile(), !newRecordingFrame->GetFrom(), newRecordingFrame->GetAuthor()))
-		{
-			if (!initiallyPaused)
-				g_InputRecordingControls.Resume();
-			return;
-		}
+
+		if (!initiallyPaused)
+			g_InputRecordingControls.Resume();
 	}
-	m_menuRecording.FindChildItem(MenuId_Recording_New)->Enable(false);
-	m_menuRecording.FindChildItem(MenuId_Recording_Stop)->Enable(true);
-	sMainFrame.enableRecordingMenuItem(MenuId_Recording_ToggleRecordingMode, g_InputRecording.IsActive());
 }
 
 void MainEmuFrame::Menu_Recording_Play_Click(wxCommandEvent& event)
 {
 	const bool initiallyPaused = g_InputRecordingControls.IsPaused();
+
 	if (!initiallyPaused)
 		g_InputRecordingControls.PauseImmediately();
+
 	wxFileDialog openFileDialog(this, _("Select P2M2 record file."), L"", L"",
 								L"p2m2 file(*.p2m2)|*.p2m2", wxFD_OPEN);
 	if (openFileDialog.ShowModal() == wxID_CANCEL)
@@ -1004,30 +997,39 @@ void MainEmuFrame::Menu_Recording_Play_Click(wxCommandEvent& event)
 		return;
 	}
 
-	wxString path = openFileDialog.GetPath();
-	const bool recordingLoaded = g_InputRecording.IsActive();
-	if (!g_InputRecording.Play(path))
+	StopInputRecording();
+	if (!g_InputRecording.Play(openFileDialog.GetPath()))
 	{
-		if (recordingLoaded)
-			Menu_Recording_Stop_Click(event);
 		if (!initiallyPaused)
 			g_InputRecordingControls.Resume();
 		return;
 	}
-	if (!recordingLoaded)
-	{
-		m_menuRecording.FindChildItem(MenuId_Recording_New)->Enable(false);
-		m_menuRecording.FindChildItem(MenuId_Recording_Stop)->Enable(true);
-	}
-	sMainFrame.enableRecordingMenuItem(MenuId_Recording_ToggleRecordingMode, g_InputRecording.IsActive());
+
+	if (!g_InputRecording.GetInputRecordingData().FromSaveState())
+		StartInputRecording();
 }
 
 void MainEmuFrame::Menu_Recording_Stop_Click(wxCommandEvent& event)
 {
-	g_InputRecording.Stop();
-	m_menuRecording.FindChildItem(MenuId_Recording_New)->Enable(true);
-	m_menuRecording.FindChildItem(MenuId_Recording_Stop)->Enable(false);
-	sMainFrame.enableRecordingMenuItem(MenuId_Recording_ToggleRecordingMode, g_InputRecording.IsActive());
+	StopInputRecording();
+}
+
+void MainEmuFrame::StartInputRecording()
+{
+	m_menuRecording.FindChildItem(MenuId_Recording_New)->Enable(false);
+	m_menuRecording.FindChildItem(MenuId_Recording_Stop)->Enable(true);
+	m_menuRecording.FindChildItem(MenuId_Recording_ToggleRecordingMode)->Enable(true);
+}
+
+void MainEmuFrame::StopInputRecording()
+{
+	if (g_InputRecording.IsActive())
+	{
+		g_InputRecording.Stop();
+		m_menuRecording.FindChildItem(MenuId_Recording_New)->Enable(true);
+		m_menuRecording.FindChildItem(MenuId_Recording_Stop)->Enable(false);
+		m_menuRecording.FindChildItem(MenuId_Recording_ToggleRecordingMode)->Enable(false);
+	}
 }
 
 void MainEmuFrame::Menu_Recording_TogglePause_Click(wxCommandEvent& event)
@@ -1050,6 +1052,6 @@ void MainEmuFrame::Menu_Recording_ToggleRecordingMode_Click(wxCommandEvent& even
 
 void MainEmuFrame::Menu_Recording_VirtualPad_Open_Click(wxCommandEvent& event)
 {
-	wxGetApp().GetVirtualPadPtr(event.GetId() - MenuId_Recording_VirtualPad_Port0)->Show();
+	g_InputRecording.ShowVirtualPad(event.GetId() - MenuId_Recording_VirtualPad_Port0);
 }
 #endif

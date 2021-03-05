@@ -30,6 +30,7 @@ __fi void vif0FLUSH()
 		vif0.waitforvu = true;
 		vif0.vifstalled.enabled = VifStallEnable(vif0ch);
 		vif0.vifstalled.value = VIF_TIMING_BREAK;
+		vif0Regs.stat.VEW = true;
 	}
 	return;
 }
@@ -135,7 +136,7 @@ __fi void vif0SetupTransfer()
 
 __fi void vif0VUFinish()
 {
-	if (VU0.VI[REG_VPU_STAT].UL & 0x4)
+	if (VU0.VI[REG_VPU_STAT].UL & 0x5)
 	{
 		CPU_INT(VIF_VU0_FINISH, 128);
 		return;
@@ -158,7 +159,7 @@ __fi void vif0VUFinish()
 		vif0.waitforvu = false;
 		ExecuteVU(0);
 		//Make sure VIF0 isnt already scheduled to spin.
-		if(!(cpuRegs.interrupt & 0x1) && vif0ch.chcr.STR && !vif0Regs.stat.INT)
+		if(!(cpuRegs.interrupt & 0x1) && vif0ch.chcr.STR && !vif0Regs.stat.test(VIF0_STAT_VSS | VIF0_STAT_VIS | VIF0_STAT_VFS))
 			vif0Interrupt();
 	}
 	//DevCon.Warning("VU0 state cleared");
@@ -176,7 +177,7 @@ __fi void vif0Interrupt()
 
 	if(vif0.waitforvu)
 	{
-		//CPU_INT(DMAC_VIF0, 16);
+		CPU_INT(VIF_VU0_FINISH, 16);
 		return;
 	}
 
@@ -312,6 +313,6 @@ void dmaVIF0()
 	//Using a delay as Beyond Good and Evil does the DMA twice with 2 different TADR's (no checks in the middle, all one block of code),
 	//the first bit it sends isnt required for it to work.
 	//Also being an end chain it ignores the second lot, this causes infinite loops ;p
-	// Chain Mode
-	CPU_INT(DMAC_VIF0, 4);
+	if (!vif0Regs.stat.test(VIF0_STAT_VSS | VIF0_STAT_VIS | VIF0_STAT_VFS))
+		CPU_INT(DMAC_VIF0, 4);
 }

@@ -129,9 +129,9 @@ bool IsTAPDevice(const TCHAR* guid)
 	return false;
 }
 
-vector<tap_adapter>* GetTapAdapters()
+std::vector<AdapterEntry> TAPAdapter::GetAdapters()
 {
-	vector<tap_adapter>* tap_nic = new vector<tap_adapter>();
+	std::vector<AdapterEntry> tap_nic;
 	LONG status;
 	HKEY control_net_key;
 	DWORD len;
@@ -141,13 +141,13 @@ vector<tap_adapter>* GetTapAdapters()
 						  &control_net_key);
 
 	if (status != ERROR_SUCCESS)
-		return false;
+		return tap_nic;
 
 	status = RegQueryInfoKey(control_net_key, nullptr, nullptr, nullptr, &cSubKeys, nullptr, nullptr,
 							 nullptr, nullptr, nullptr, nullptr, nullptr);
 
 	if (status != ERROR_SUCCESS)
-		return false;
+		return tap_nic;
 
 	for (DWORD i = 0; i < cSubKeys; i++)
 	{
@@ -183,8 +183,11 @@ vector<tap_adapter>* GetTapAdapters()
 			{
 				if (IsTAPDevice(enum_name))
 				{
-					tap_adapter t = {_tcsdup(name_data), _tcsdup(enum_name)};
-					tap_nic->push_back(t);
+					AdapterEntry t;
+					t.type = NetApi::TAP;
+					t.name = std::wstring(name_data);
+					t.guid = std::wstring(enum_name);
+					tap_nic.push_back(t);
 				}
 			}
 
@@ -197,10 +200,19 @@ vector<tap_adapter>* GetTapAdapters()
 	return tap_nic;
 }
 
+static int TAPGetMACAddress(HANDLE handle, u8* addr)
+{
+	DWORD len = 0;
+
+	return DeviceIoControl(handle, TAP_IOCTL_GET_MAC,
+						   addr, 6,
+						   addr, 6, &len, NULL);
+}
+
 //Set the connection status
 static int TAPSetStatus(HANDLE handle, int status)
 {
-	unsigned long len = 0;
+	DWORD len = 0;
 
 	return DeviceIoControl(handle, TAP_IOCTL_SET_MEDIA_STATUS,
 						   &status, sizeof(status),
@@ -259,6 +271,7 @@ HANDLE TAPOpen(const char* device_guid)
 
 
 TAPAdapter::TAPAdapter()
+	: NetAdapter()
 {
 	if (config.ethEnable == 0)
 		return;
@@ -271,6 +284,21 @@ TAPAdapter::TAPAdapter()
 	write.Offset = 0;
 	write.OffsetHigh = 0;
 	write.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+	cancel = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+	u8 hostMAC[6];
+	u8 newMAC[6];
+
+	TAPGetMACAddress(htap, hostMAC);
+	memcpy(newMAC, ps2MAC, 6);
+
+	//Lets take the hosts last 2 bytes to make it unique on Xlink
+	newMAC[5] = hostMAC[4];
+	newMAC[4] = hostMAC[5];
+
+	SetMACAddress(newMAC);
+
 	isActive = true;
 }
 
@@ -282,7 +310,6 @@ bool TAPAdapter::isInitialised()
 {
 	return (htap != NULL);
 }
-u8 broadcast_adddrrrr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 //gets a packet.rv :true success
 bool TAPAdapter::recv(NetPacket* pkt)
 {
@@ -298,35 +325,22 @@ bool TAPAdapter::recv(NetPacket* pkt)
 		DWORD dwError = GetLastError();
 		if (dwError == ERROR_IO_PENDING)
 		{
-			WaitForSingleObject(read.hEvent, INFINITE);
-			result = GetOverlappedResult(htap, &read,
-										 &read_size, FALSE);
-			if (!result)
+			HANDLE readHandles[]{read.hEvent, cancel};
+			const DWORD waitResult = WaitForMultipleObjects(2, readHandles, FALSE, INFINITE);
+
+			if (waitResult == WAIT_OBJECT_0 + 1)
 			{
+				CancelIo(htap);
+				//Wait for the I/O subsystem to acknowledge our cancellation
+				result = GetOverlappedResult(htap, &read, &read_size, TRUE);
 			}
-		}
-		else
-		{
+			else
+				result = GetOverlappedResult(htap, &read, &read_size, FALSE);
 		}
 	}
-
 
 	if (result)
-	{
-		if ((memcmp(pkt->buffer, dev9.eeprom, 6) != 0) && (memcmp(pkt->buffer, &broadcast_adddrrrr, 6) != 0))
-		{
-			//ignore strange packets
-			return false;
-		}
-
-		if (memcmp(pkt->buffer + 6, dev9.eeprom, 6) == 0)
-		{
-			//avoid pcap looping packets
-			return false;
-		}
-		pkt->size = read_size;
-		return true;
-	}
+		return VerifyPkt(pkt, read_size);
 	else
 		return false;
 }
@@ -346,14 +360,7 @@ bool TAPAdapter::send(NetPacket* pkt)
 		if (dwError == ERROR_IO_PENDING)
 		{
 			WaitForSingleObject(write.hEvent, INFINITE);
-			result = GetOverlappedResult(htap, &write,
-										 &writen, FALSE);
-			if (!result)
-			{
-			}
-		}
-		else
-		{
+			result = GetOverlappedResult(htap, &write, &writen, FALSE);
 		}
 	}
 
@@ -367,12 +374,17 @@ bool TAPAdapter::send(NetPacket* pkt)
 	else
 		return false;
 }
+void TAPAdapter::close()
+{
+	SetEvent(cancel);
+}
 TAPAdapter::~TAPAdapter()
 {
 	if (!isActive)
 		return;
 	CloseHandle(read.hEvent);
 	CloseHandle(write.hEvent);
+	CloseHandle(cancel);
 	TAPSetStatus(htap, FALSE);
 	CloseHandle(htap);
 	isActive = false;

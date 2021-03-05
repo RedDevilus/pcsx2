@@ -12,7 +12,7 @@ on:
       - .clang-format
       - debian-packager/
       - bin/PCSX2_keys.ini.default
-      - "plugins/LilyPad/**"
+      - "pcsx2/PAD/Windows/**"
   pull_request:
     branches:
       - master
@@ -22,7 +22,7 @@ on:
       - .clang-format
       - debian-packager/
       - bin/PCSX2_keys.ini.default
-      - "plugins/LilyPad/**"
+      - "pcsx2/PAD/Windows/**"
 
 jobs:
   build:
@@ -59,8 +59,9 @@ jobs:
         env:
           PLATFORM: ${{ matrix.platform }}
         run: |
+          export HOMEBREW_NO_INSTALL_CLEANUP=1
           brew install sound-touch portaudio wxmac gtk+3 sdl2 libsamplerate
-          brew cask install xquartz # We use its OpenGL headers
+          brew install --cask xquartz # We use its OpenGL headers
 
       - name: Generate CMake Files
         run: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_BUILD_PO=FALSE -B build .

@@ -63,11 +63,19 @@ void mVUDTendProgram(mV, microFlagCycles* mFC, int isEbit) {
 	}
 
 	// Save P/Q Regs
-	if (qInst) { xPSHUF.D(xmmPQ, xmmPQ, 0xe5); }
+	if (qInst) { xPSHUF.D(xmmPQ, xmmPQ, 0xe1); }
 	xMOVSS(ptr32[&mVU.regs().VI[REG_Q].UL], xmmPQ);
+	xPSHUF.D(xmmPQ, xmmPQ, 0xe1);
+	xMOVSS(ptr32[&mVU.regs().pending_q], xmmPQ);
+	xPSHUF.D(xmmPQ, xmmPQ, 0xe1);
+
 	if (isVU1) {
-		xPSHUF.D(xmmPQ, xmmPQ, pInst ? 3 : 2);
+		if (pInst) { xPSHUF.D(xmmPQ, xmmPQ, 0xb4); } // Swap Pending/Active P
+		xPSHUF.D(xmmPQ, xmmPQ, 0xC6); // 3 0 1 2
 		xMOVSS(ptr32[&mVU.regs().VI[REG_P].UL], xmmPQ);
+		xPSHUF.D(xmmPQ, xmmPQ, 0x87); // 0 2 1 3
+		xMOVSS(ptr32[&mVU.regs().pending_p], xmmPQ);
+		xPSHUF.D(xmmPQ, xmmPQ, 0x27); // 3 2 1 0
 	}
 
 	// Save MAC, Status and CLIP Flag Instances
@@ -102,10 +110,9 @@ void mVUDTendProgram(mV, microFlagCycles* mFC, int isEbit) {
 		xMOVAPS(ptr128[&mVU.regs().micro_statusflags], xmmT1);
 	}
 
-	if (isEbit || isVU1) { // Clear 'is busy' Flags
+	if (isEbit) { // Clear 'is busy' Flags
 		if (!mVU.index || !THREAD_VU1) {
 			xAND(ptr32[&VU0.VI[REG_VPU_STAT].UL], (isVU1 ? ~0x100 : ~0x001)); // VBS0/VBS1 flag
-			xAND(ptr32[&mVU.getVifRegs().stat], ~VIF1_STAT_VEW); // Clear VU 'is busy' signal for vif
 		}
 	}
 
@@ -161,13 +168,12 @@ void mVUendProgram(mV, microFlagCycles* mFC, int isEbit) {
 	xPSHUF.D(xmmPQ, xmmPQ, 0xe1);
 
 	if (isVU1) {
-		xPSHUF.D(xmmPQ, xmmPQ, pInst ? 0x1b : 0x1e);
+		if (pInst) { xPSHUF.D(xmmPQ, xmmPQ, 0xb4); } // Swap Pending/Active P
+		xPSHUF.D(xmmPQ, xmmPQ, 0xC6); // 3 0 1 2
 		xMOVSS(ptr32[&mVU.regs().VI[REG_P].UL], xmmPQ);
-		xPSHUF.D(xmmPQ, xmmPQ, pInst ? 0x1b : 0x4b);
-
-		xPSHUF.D(xmmPQ, xmmPQ, 0xe1);
+		xPSHUF.D(xmmPQ, xmmPQ, 0x87); // 0 2 1 3
 		xMOVSS(ptr32[&mVU.regs().pending_p], xmmPQ);
-		xPSHUF.D(xmmPQ, xmmPQ, 0x1b);
+		xPSHUF.D(xmmPQ, xmmPQ, 0x27); // 3 2 1 0
 	}
 
 	// Save MAC, Status and CLIP Flag Instances
@@ -204,10 +210,9 @@ void mVUendProgram(mV, microFlagCycles* mFC, int isEbit) {
 	}
 
 
-	if ((isEbit && isEbit != 3) || isVU1) { // Clear 'is busy' Flags
+	if ((isEbit && isEbit != 3)) { // Clear 'is busy' Flags
 		if (!mVU.index || !THREAD_VU1) {
 			xAND(ptr32[&VU0.VI[REG_VPU_STAT].UL], (isVU1 ? ~0x100 : ~0x001)); // VBS0/VBS1 flag
-			//xAND(ptr32[&mVU.getVifRegs().stat], ~VIF1_STAT_VEW); // Clear VU 'is busy' signal for vif
 		}
 	}
 
@@ -226,6 +231,7 @@ void mVUsetupBranch(mV, microFlagCycles& mFC) {
 
 	// Shuffle P/Q regs since every block starts at instance #0
 	if (mVU.p || mVU.q) { xPSHUF.D(xmmPQ, xmmPQ, shufflePQ); }
+	mVU.p = 0, mVU.q = 0;
 }
 
 void normBranchCompile(microVU& mVU, u32 branchPC) {
@@ -302,6 +308,7 @@ void normBranch(mV, microFlagCycles& mFC) {
 		for (size_t i = 0; i < (sizeof(microRegInfo) - 4) / 4; i++, lpS++, cpS++) {
 			xMOV(ptr32[lpS], cpS[0]);
 		}
+		mVUsetupBranch(mVU, mFC);
 		mVUendProgram(mVU, &mFC, 3);
 		iPC = branchAddr(mVU) / 4;
 		xMOV(ptr32[&mVU.regs().VI[REG_TPC].UL], xPC);

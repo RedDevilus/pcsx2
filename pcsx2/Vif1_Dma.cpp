@@ -30,6 +30,7 @@ __fi void vif1FLUSH()
 		vif1.waitforvu = true;
 		vif1.vifstalled.enabled = VifStallEnable(vif1ch);
 		vif1.vifstalled.value = VIF_TIMING_BREAK;
+		vif1Regs.stat.VEW = true;
 	}
 }
 
@@ -231,18 +232,18 @@ __fi void vif1SetupTransfer()
 
 __fi void vif1VUFinish()
 {
-	if (VU0.VI[REG_VPU_STAT].UL & 0x400)
+	if (VU0.VI[REG_VPU_STAT].UL & 0x500)
 	{
 		CPU_INT(VIF_VU1_FINISH, 128);
 		return;
 	}
-
+	
 	if (VU0.VI[REG_VPU_STAT].UL & 0x100)
 	{
-		int _cycles = VU1.cycle;
+		u32 _cycles = VU1.cycle;
 		//DevCon.Warning("Finishing VU1");
-		vu1Finish();
-		CPU_INT(VIF_VU1_FINISH, (VU1.cycle - _cycles) * BIAS); 
+		vu1Finish(false);
+		CPU_INT(VIF_VU1_FINISH, VU1.cycle - _cycles);
 		return;
 	}
 
@@ -267,7 +268,7 @@ __fi void vif1VUFinish()
 		vif1.waitforvu = false;
 		ExecuteVU(1);
 		//Check if VIF is already scheduled to interrupt, if it's waiting, kick it :P
-		if((cpuRegs.interrupt & (1<<DMAC_VIF1 | 1 << DMAC_MFIFO_VIF)) == 0 && vif1ch.chcr.STR && !vif1Regs.stat.INT)
+		if((cpuRegs.interrupt & ((1<<DMAC_VIF1) | (1 << DMAC_MFIFO_VIF))) == 0 && vif1ch.chcr.STR && !vif1Regs.stat.test(VIF1_STAT_VSS | VIF1_STAT_VIS | VIF1_STAT_VFS))
 		{
 			if(dmacRegs.ctrl.MFD == MFD_VIF1)
 				vifMFIFOInterrupt();
@@ -324,6 +325,7 @@ __fi void vif1Interrupt()
 	{
 		//DevCon.Warning("Waiting on VU1");
 		//CPU_INT(DMAC_VIF1, 16);
+		CPU_INT(VIF_VU1_FINISH, 16);
 		return;
 	}
 	if (!vif1ch.chcr.STR) Console.WriteLn("Vif1 running when CHCR == %x", vif1ch.chcr._u32);
@@ -482,6 +484,9 @@ void dmaVIF1()
 
 	if (vif1ch.chcr.DIR) vif1Regs.stat.FQC = std::min((u32)0x10, vif1ch.qwc);
 
-	// Chain Mode
-	CPU_INT(DMAC_VIF1, 4);
+	// Check VIF isn't stalled before starting the loop.
+	// Batman Vengence does something stupid and instead of cancelling a stall it tries to restart VIF, THEN check the stall
+	// However if VIF FIFO is reversed, it can continue
+	if (!vif1ch.chcr.DIR || !vif1Regs.stat.test(VIF1_STAT_VSS | VIF1_STAT_VIS | VIF1_STAT_VFS))
+		CPU_INT(DMAC_VIF1, 4);
 }

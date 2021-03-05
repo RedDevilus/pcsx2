@@ -10,22 +10,3 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/plugins/GSdx" AND GSdx)
 	add_subdirectory(GSdx)
 endif()
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/plugins/GSnull" AND GSnull)
-	add_subdirectory(GSnull)
-endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/plugins/LilyPad" AND LilyPad)
-	add_subdirectory(LilyPad)
-endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/plugins/onepad" AND onepad)
-	add_subdirectory(onepad)
-endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/plugins/onepad_legacy" AND onepad_legacy)
-	add_subdirectory(onepad_legacy)
-endif()
-
-if(EXISTS "${CMAKE_SOURCE_DIR}/plugins/PadNull" AND PadNull)
-	add_subdirectory(PadNull)
-endif()

@@ -444,8 +444,6 @@ __fi void mVUinitFirstPass(microVU& mVU, uptr pState, u8* thisPtr) {
 	mVUregs.blockType		= 0;
 	mVUregs.viBackUp		= 0;
 	mVUregs.flagInfo		= 0;
-	mVUregs.fullFlags0		= 0;
-	mVUregs.fullFlags1		= 0;
 	mVUsFlagHack			= CHECK_VU_FLAGHACK;
 	mVUinitConstValues(mVU);
 }
@@ -491,8 +489,6 @@ void* mVUcompileSingleInstruction(microVU& mVU, u32 startPC, uptr pState, microF
 	mVUsetFlags(mVU, mFC);           // Sets Up Flag instances
 	mVUoptimizePipeState(mVU);       // Optimize the End Pipeline State for nicer Block Linking
 	mVUdebugPrintBlocks(mVU, false); // Prints Start/End PC of blocks executed, for debugging...
-	
-	mVUtestCycles(mVU, mFC);              // Update VU Cycles and Exit Early if Necessary
 
 	// Second Pass
 	iPC = startPC / 4;
@@ -777,6 +773,16 @@ __fi void* mVUblockFetch(microVU& mVU, u32 startPC, uptr pState) {
 // mVUcompileJIT() - Called By JR/JALR during execution
 _mVUt void* __fastcall mVUcompileJIT(u32 startPC, uptr ptr) {
 	if (doJumpAsSameProgram) { // Treat jump as part of same microProgram
+		if (doJumpCaching) { // When doJumpCaching, ptr is a microBlock pointer
+			microVU& mVU = mVUx;
+			microBlock* pBlock = (microBlock*)ptr;
+			microJumpCache& jc = pBlock->jumpCache[startPC / 8];
+			if (jc.prog && jc.prog == mVU.prog.quick[startPC / 8].prog) return jc.x86ptrStart;
+			void* v = mVUblockFetch(mVUx, startPC, (uptr)&pBlock->pStateEnd);
+			jc.prog = mVU.prog.quick[startPC / 8].prog;
+			jc.x86ptrStart = v;
+			return v;
+		}
 		return mVUblockFetch(mVUx, startPC, ptr);
 	}
 	mVUx.regs().start_pc = startPC;
