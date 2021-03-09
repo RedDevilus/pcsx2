@@ -306,6 +306,11 @@ void Panels::SpeedHacksPanel::ApplyConfigToGui( AppConfig& configToApply, int fl
 
 	// Then, lock(gray out)/unlock the widgets as necessary.
 	EnableStuff( &configToApply );
+	// Disables the Instant VU1 checkbox when MTVU is checked in the GUI as reflected in the code.
+	// Makes Instant VU1 toggleable when MTVU is unchecked in the GUI.
+	// Some may think that having MTVU + Instant VU1 can have bad side-effects when it doesn't.
+	if (m_check_vuThread->GetValue())
+		m_check_vu1Instant->Disable();
 }
 
 // Apply the values from the widgets to the config,
