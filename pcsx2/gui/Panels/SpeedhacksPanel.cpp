@@ -242,6 +242,7 @@ Panels::SpeedHacksPanel::SpeedHacksPanel( wxWindow* parent )
 	Bind(wxEVT_SCROLL_CHANGED, &SpeedHacksPanel::VUCycleRate_Scroll, this, m_slider_eeSkip->GetId());
 	Bind(wxEVT_CHECKBOX, &SpeedHacksPanel::OnEnable_Toggled, this, m_check_Enable->GetId());
 	Bind(wxEVT_BUTTON, &SpeedHacksPanel::Defaults_Click, this, wxID_DEFAULT);
+	Bind(wxEVT_CHECKBOX, &SpeedHacksPanel::OnClick_VUThread, this, m_check_vuThread->GetId());
 }
 
 // Doesn't modify values - only locks(gray out)/unlocks as necessary.
@@ -267,7 +268,10 @@ void Panels::SpeedHacksPanel::EnableStuff( AppConfig* configToUse )
 	m_check_intc->Enable(HacksEnabledAndNoPreset);
 	m_check_waitloop->Enable(HacksEnabledAndNoPreset);
 	m_check_fastCDVD->Enable(HacksEnabledAndNoPreset);
-	m_check_vu1Instant->Enable(hacksEnabled);
+	// Disables the Instant VU1 checkbox when MTVU is checked in the GUI as reflected in the code.
+	// Makes Instant VU1 toggleable when MTVU is unchecked in the GUI.
+	// Some may think that having MTVU + Instant VU1 can have bad side-effects when it doesn't.
+	m_check_vu1Instant->Enable(hacksEnabled && !configToUse->EmuOptions.Speedhacks.vuThread);
 
 	// Grayout MTVU on safest preset
 	m_check_vuThread->Enable(hacksEnabled && (!hasPreset || configToUse->PresetIndex != 0));
@@ -306,11 +310,6 @@ void Panels::SpeedHacksPanel::ApplyConfigToGui( AppConfig& configToApply, int fl
 
 	// Then, lock(gray out)/unlock the widgets as necessary.
 	EnableStuff( &configToApply );
-	// Disables the Instant VU1 checkbox when MTVU is checked in the GUI as reflected in the code.
-	// Makes Instant VU1 toggleable when MTVU is unchecked in the GUI.
-	// Some may think that having MTVU + Instant VU1 can have bad side-effects when it doesn't.
-	if (m_check_vuThread->GetValue())
-		m_check_vu1Instant->Disable();
 }
 
 // Apply the values from the widgets to the config,
@@ -372,4 +371,12 @@ void Panels::SpeedHacksPanel::VUCycleRate_Scroll(wxScrollEvent &event)
 	Layout();
 
 	event.Skip();
+}
+
+void Panels::SpeedHacksPanel::OnClick_VUThread(wxCommandEvent& evt)
+{
+	if (m_check_vuThread->IsEnabled())
+		m_check_vu1Instant->Disable();
+	else
+		m_check_vu1Instant->Enable();
 }
