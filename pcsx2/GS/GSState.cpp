@@ -2428,33 +2428,57 @@ GSState::PRIM_OVERLAP GSState::PrimitiveOverlap()
 	return overlap;
 }
 
+__forceinline void GSState::HandleAutoFlush()
+{
+
+	// To briefly explain what's going on here, what we are checking for is draws over a texture when the source and destination are themselves.
+	// Because one page of the texture gets buffered in the Texture Cache (the PS2's one) if any of those pixels are overwritten, you stil read the old data.
+	// So we need to calculate if a page boundary is being crossed for the format it is in and if the same part of the texture being written and read inside the draw.
+
+	if ((m_context->FRAME.FBMSK != 0xFFFFFFFF) && PRIM->TME && (m_context->FRAME.Block() == m_context->TEX0.TBP0) && (m_context->TEX0.PSM == m_context->FRAME.PSM))
+	{
+		// We need to update the vertex trace before processing
+		m_vt.Update(m_vertex.buff, m_index.buff, m_vertex.tail, m_index.tail, GSUtil::GetPrimClass(PRIM->PRIM));
+
+		// Prepare the currently processed vertex and add it to our current texture coordinates
+		GSVector4i vertex;
+		GSVector4i texminmax = GetTextureMinMax(m_context->TEX0, m_context->CLAMP, m_vt.IsLinear()).coverage;
+
+		if (PRIM->FST)
+		{
+			vertex.x = m_v.U >> 4;
+			vertex.y = m_v.V >> 4;
+		}
+		else
+		{
+			vertex.x = (int)((1 << m_context->TEX0.TW) * (m_v.ST.S / m_v.RGBAQ.Q));
+			vertex.y = (int)((1 << m_context->TEX0.TH) * (m_v.ST.T / m_v.RGBAQ.Q));
+		}
+		vertex.z = vertex.x + 1;
+		vertex.w = vertex.y + 1;
+
+		texminmax = texminmax.runion(vertex);
+
+		// Check if the texture being used has been drawn in previous vertices
+		const bool tex_in_draw = !GSVector4i(m_vt.m_min.p.xyxy(m_vt.m_max.p)).rintersect(texminmax).rempty();
+
+		if (tex_in_draw)
+		{
+			// Calculate the pages that the texture will be read from
+			const int page_mask_x = ~(GSLocalMemory::m_psm[m_context->TEX0.PSM].pgs.x - 1);
+			const int page_mask_y = ~(GSLocalMemory::m_psm[m_context->TEX0.PSM].pgs.y - 1);
+			const GSVector4i pages = { texminmax.x & page_mask_x, texminmax.y & page_mask_y, texminmax.z & page_mask_x, texminmax.w & page_mask_y };
+
+			// Make sure the draw is crossing a page boundary and the draw is inside it, otherwise it's not reading new data
+			if ((pages.x != pages.z) || (pages.y != pages.w))
+				FlushPrim();
+		}
+	}
+}
+
 template <u32 prim, bool auto_flush, bool index_swap>
 __forceinline void GSState::VertexKick(u32 skip)
 {
-	ASSERT(m_vertex.tail < m_vertex.maxcount + 3);
-
-	size_t head = m_vertex.head;
-	size_t tail = m_vertex.tail;
-	size_t next = m_vertex.next;
-	size_t xy_tail = m_vertex.xy_tail;
-
-	// callers should write XYZUVF to m_v.m[1] in one piece to have this load store-forwarded, either by the cpu or the compiler when this function is inlined
-
-	GSVector4i v0(m_v.m[0]);
-	GSVector4i v1(m_v.m[1]);
-
-	GSVector4i* RESTRICT tailptr = (GSVector4i*)&m_vertex.buff[tail];
-
-	tailptr[0] = v0;
-	tailptr[1] = v1;
-
-	const GSVector4i xy = v1.xxxx().u16to32().sub32(m_ofxy);
-
-	GSVector4i::storel(&m_vertex.xy[xy_tail & 3], xy.blend16<0xf0>(xy.sra32(4)).ps32());
-
-	m_vertex.tail = ++tail;
-	m_vertex.xy_tail = ++xy_tail;
-
 	size_t n = 0;
 
 	switch (prim)
@@ -2484,6 +2508,37 @@ __forceinline void GSState::VertexKick(u32 skip)
 			n = 1;
 			break;
 	}
+
+	if (m_context->FRAME.FBMSK != 0xFFFFFFFF)
+		m_mem.m_clut.Invalidate(m_context->FRAME.Block());
+
+	if (auto_flush && m_vertex.tail >= n)
+		HandleAutoFlush();
+
+	ASSERT(m_vertex.tail < m_vertex.maxcount + 3);
+
+	size_t head = m_vertex.head;
+	size_t tail = m_vertex.tail;
+	size_t next = m_vertex.next;
+	size_t xy_tail = m_vertex.xy_tail;
+
+	// callers should write XYZUVF to m_v.m[1] in one piece to have this load store-forwarded, either by the cpu or the compiler when this function is inlined
+
+	GSVector4i v0(m_v.m[0]);
+	GSVector4i v1(m_v.m[1]);
+
+	GSVector4i* RESTRICT tailptr = (GSVector4i*)&m_vertex.buff[tail];
+
+	tailptr[0] = v0;
+	tailptr[1] = v1;
+
+	const GSVector4i xy = v1.xxxx().u16to32().sub32(m_ofxy);
+
+	GSVector4i::storel(&m_vertex.xy[xy_tail & 3], xy.blend16<0xf0>(xy.sra32(4)).ps32());
+
+	m_vertex.tail = ++tail;
+	m_vertex.xy_tail = ++xy_tail;
+
 
 	size_t m = tail - head;
 
@@ -2662,16 +2717,6 @@ __forceinline void GSState::VertexKick(u32 skip)
 			break;
 		default:
 			__assume(0);
-	}
-
-	if (m_context->FRAME.FBMSK != 0xFFFFFFFF)
-	{
-		m_mem.m_clut.Invalidate(m_context->FRAME.Block());
-
-		if (auto_flush && PRIM->TME && (m_context->FRAME.Block() == m_context->TEX0.TBP0) && (m_context->TEX0.PSM == m_context->FRAME.PSM))
-		{
-			FlushPrim();
-		}
 	}
 }
 
