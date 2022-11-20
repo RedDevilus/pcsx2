@@ -155,6 +155,7 @@ Pcsx2Config::RecompilerOptions::RecompilerOptions()
 	EnableIOP = true;
 	EnableVU0 = true;
 	EnableVU1 = true;
+	EnableFastmem = true;
 
 	// vu and fpu clamping default to standard overflow.
 	vuOverflow = true;
@@ -211,6 +212,7 @@ void Pcsx2Config::RecompilerOptions::LoadSave(SettingsWrapper& wrap)
 	SettingsWrapBitBool(EnableEECache);
 	SettingsWrapBitBool(EnableVU0);
 	SettingsWrapBitBool(EnableVU1);
+	SettingsWrapBitBool(EnableFastmem);
 
 	SettingsWrapBitBool(vuOverflow);
 	SettingsWrapBitBool(vuExtraOverflow);
@@ -220,10 +222,6 @@ void Pcsx2Config::RecompilerOptions::LoadSave(SettingsWrapper& wrap)
 	SettingsWrapBitBool(fpuOverflow);
 	SettingsWrapBitBool(fpuExtraOverflow);
 	SettingsWrapBitBool(fpuFullMode);
-
-	SettingsWrapBitBool(StackFrameChecks);
-	SettingsWrapBitBool(PreBlockCheckEE);
-	SettingsWrapBitBool(PreBlockCheckIOP);
 }
 
 bool Pcsx2Config::CpuOptions::CpusChanged(const CpuOptions& right) const
@@ -868,7 +866,8 @@ static const char* const tbl_GamefixNames[] =
 	"VUSync",
 	"VUOverflow",
 	"XGKick",
-	"BlitInternalFPS"
+	"BlitInternalFPS",
+	"FullVU0Sync",
 };
 
 const char* EnumToString(GamefixId id)
@@ -911,6 +910,7 @@ void Pcsx2Config::GamefixOptions::Set(GamefixId id, bool enabled)
 		case Fix_VUSync:              VUSyncHack              = enabled; break;
 		case Fix_VUOverflow:          VUOverflowHack          = enabled; break;
 		case Fix_BlitInternalFPS:     BlitInternalFPSHack     = enabled; break;
+		case Fix_FullVU0Sync:         FullVU0SyncHack         = enabled; break;
 		jNO_DEFAULT;
 	}
 }
@@ -938,6 +938,7 @@ bool Pcsx2Config::GamefixOptions::Get(GamefixId id) const
 		case Fix_VUSync:              return VUSyncHack;
 		case Fix_VUOverflow:          return VUOverflowHack;
 		case Fix_BlitInternalFPS:     return BlitInternalFPSHack;
+		case Fix_FullVU0Sync:         return FullVU0SyncHack;
 		jNO_DEFAULT;
 	}
 	return false; // unreachable, but we still need to suppress warnings >_<
@@ -965,6 +966,7 @@ void Pcsx2Config::GamefixOptions::LoadSave(SettingsWrapper& wrap)
 	SettingsWrapBitBool(VUSyncHack);
 	SettingsWrapBitBool(VUOverflowHack);
 	SettingsWrapBitBool(BlitInternalFPSHack);
+	SettingsWrapBitBool(FullVU0SyncHack);
 }
 
 

@@ -1659,6 +1659,7 @@ target_link_libraries(PCSX2_FLAGS INTERFACE
 	chdr-static
 	libzip::zip
 	cpuinfo
+	zydis
 	ZLIB::ZLIB
 	PkgConfig::SOUNDTOUCH
 	PNG::PNG
@@ -1697,12 +1698,9 @@ if(WIN32)
 		strmiids.lib
 		opengl32.lib
 		comsuppw.lib
+		OneCore.lib
 	)
-	if(PCSX2_CORE)
-		target_link_libraries(PCSX2_FLAGS INTERFACE
-			OneCore.lib
-		)
-	else()
+	if(NOT PCSX2_CORE)
 		target_link_libraries(PCSX2_FLAGS INTERFACE
 			pthreads4w
 		)

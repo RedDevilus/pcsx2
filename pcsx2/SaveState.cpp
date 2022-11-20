@@ -62,12 +62,21 @@
 
 using namespace R5900;
 
+static tlbs s_tlb_backup[std::size(tlb)];
+
 static void PreLoadPrep()
 {
 	// ensure everything is in sync before we start overwriting stuff.
 	if (THREAD_VU1)
 		vu1Thread.WaitVU();
 	GetMTGS().WaitGS(false);
+
+	// backup current TLBs, since we're going to overwrite them all
+	std::memcpy(s_tlb_backup, tlb, sizeof(s_tlb_backup));
+
+	// clear protected pages, since we don't want to fault loading EE memory
+	mmap_ResetBlockTracking();
+
 	SysClearExecutionCache();
 #ifndef PCSX2_CORE
 	PatchesVerboseReset();
@@ -78,7 +87,15 @@ static void PostLoadPrep()
 {
 	resetCache();
 //	WriteCP0Status(cpuRegs.CP0.n.Status.val);
-	for(int i=0; i<48; i++) MapTLB(i);
+	for (int i = 0; i < 48; i++)
+	{
+		if (std::memcmp(&s_tlb_backup[i], &tlb[i], sizeof(tlbs)) != 0)
+		{
+			UnmapTLB(s_tlb_backup[i], i);
+			MapTLB(tlb[i], i);
+		}
+	}
+
 	if (EmuConfig.Gamefixes.GoemonTlbHack) GoemonPreloadTlb();
 	CBreakPoints::SetSkipFirst(BREAKPOINT_EE, 0);
 	CBreakPoints::SetSkipFirst(BREAKPOINT_IOP, 0);
@@ -266,12 +283,6 @@ SaveStateBase& SaveStateBase::FreezeInternals()
 	FreezeTag( "Cycles" );
 	Freeze(EEsCycle);
 	Freeze(EEoCycle);
-	Freeze(iopCycleEE);
-	Freeze(iopBreak);
-	Freeze(g_nextEventCycle);
-	Freeze(g_iopNextEventCycle);
-	Freeze(s_iLastCOP0Cycle);
-	Freeze(s_iLastPERFCycle);
 	Freeze(nextCounter);
 	Freeze(nextsCounter);
 	Freeze(psxNextsCounter);
