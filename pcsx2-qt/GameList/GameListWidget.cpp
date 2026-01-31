@@ -585,7 +585,8 @@ void GameListWidget::onTableViewHeaderContextMenuRequested(const QPoint& point)
 			// FALLBACK
 			// Even if the user hides everything by unchecking all active checkboxes such as Title, Time Played, Region, Et Cetera, keep the header visible
 			// so they can right-click and recover.
-			m_table_view->horizontalHeader()->setVisible(true);
+			m_table_view->horizontalHeader()->setVisible(true); // local pointer reference	header->setVisible(true);
+			header->setMinimumHeight(50); 
 
 			onTableHeaderStateChanged();
 		});
