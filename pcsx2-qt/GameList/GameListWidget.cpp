@@ -568,22 +568,34 @@ void GameListWidget::onTableViewHeaderContextMenuRequested(const QPoint& point)
 		return;
 
 	int column_visual = 0;
+	// Loop through all columns
 	for (int column = 0; column < GameListModel::Column_Count; column++)
 	{
 		// The "cover" column is the game grid and cannot be hidden.
 		if (column == GameListModel::Column_Cover)
 			continue;
 
-		column_visual = header->visualIndex(column);
-		QAction* action = menu.addAction(m_model->getColumnDisplayName(column_visual));
+		QAction* action = menu.addAction(m_model->getColumnDisplayName(column));
 		action->setCheckable(true);
-		action->setChecked(!m_table_view->isColumnHidden(column_visual));
-		connect(action, &QAction::toggled, [this, column_visual](bool enabled) {
-			m_table_view->setColumnHidden(column_visual, !enabled);
+		action->setChecked(!m_table_view->isColumnHidden(column));
+
+		connect(action, &QAction::toggled, this, [this, column](bool enabled) {
+			m_table_view->setColumnHidden(column, !enabled);
+
+			// FALLBACK
+			// Even if the user hides everything by unchecking all active checkboxes such as Title, Time Played, Region, Et Cetera, keep the header visible
+			// so they can right-click and recover.
+			m_table_view->horizontalHeader()->setVisible(true);
+
 			onTableHeaderStateChanged();
-			resizeTableViewColumnsToFit();
 		});
 	}
+
+	// Easy reset button to default to what it was before
+	menu.addSeparator();
+	QAction* resetAction = menu.addAction(tr("Reset to Default Columns"));
+	connect(resetAction, &QAction::triggered,
+	        this, &GameListWidget::resetTableHeaderToDefault);
 
 	menu.exec(m_table_view->mapToGlobal(point));
 }
@@ -824,6 +836,7 @@ void GameListWidget::applyTableHeaderDefaults()
 }
 
 // TODO (Tech): Create a button for this in the minibar. Currently unused.
+// TODO Red
 void GameListWidget::resetTableHeaderToDefault()
 {
 	QHeaderView* header = m_table_view->horizontalHeader();
